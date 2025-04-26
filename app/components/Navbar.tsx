@@ -11,20 +11,21 @@ export default function Navbar() {
       <div className="navbar-container">
         <div className="navbar-logo">
           <Link href="/" target="_blank" rel="noopener noreferrer">
-            <Image
+            {/* <Image
               src="/logo/animated-logo-minified.svg"
               alt="Openleaf Logo"
               width={150}
               height={60}
               priority
-            />
+            /> */}
+            <h1 className='text-3xl font-bold text-[#2f855a]'>HRLeaf</h1>
           </Link>
         </div>
-        <div className="navbar-links">
+        {/* <div className="navbar-links">
           <InfoLink />
           <RedditLink />
           <GitHubLink />
-        </div>
+        </div> */}
       </div>
     </nav>
   );

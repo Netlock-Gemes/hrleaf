@@ -147,7 +147,7 @@ body {
   .editor-area {
     @apply w-full max-w-4xl flex-grow flex flex-col relative
            bg-editor-bg shadow-lg cursor-text
-           rounded-squircle;
+           rounded-squircle mb-8;
   }
 
   .editor-wrapper {

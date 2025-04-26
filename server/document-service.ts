@@ -1,30 +1,24 @@
 'use server';
 
-
-import {
-  GetCommand,
-  PutCommand,
-  UpdateCommand,
-} from '@aws-sdk/lib-dynamodb';
-
 import { Document } from '@/types';
 
-import { docClient, DOCUMENTS_TABLE_NAME } from './aws-config';
 import { fetchDocument } from './document-actions';
 import { generateRandomSlug, isDocumentContentEmpty } from './document-utils';
-
+import { connectToMongo, DOCUMENTS_COLLECTION_NAME } from './mongo-config';
 
 /**
- * Create or update a document in DynamoDB
+ * Create or update a document in MongoDB
  */
 export async function createDocument(document: Document): Promise<Document> {
-  const params = {
-    TableName: DOCUMENTS_TABLE_NAME,
-    Item: document,
-  };
+  const db = await connectToMongo();
+  const collection = db.collection(DOCUMENTS_COLLECTION_NAME);
 
   try {
-    await docClient.send(new PutCommand(params));
+    await collection.updateOne(
+      { slug: document.slug, version: document.version || 1 },
+      { $set: document },
+      { upsert: true },
+    );
     return document;
   } catch (error) {
     console.error('Error creating document:', error);
@@ -33,56 +27,34 @@ export async function createDocument(document: Document): Promise<Document> {
 }
 
 /**
- * Update specific fields of a document in DynamoDB
+ * Update specific fields of a document in MongoDB
  */
 export async function updateDocument(
   slug: string,
   updates: Partial<Document>,
   version: number = 1,
 ): Promise<Document> {
+  const db = await connectToMongo();
+  const collection = db.collection(DOCUMENTS_COLLECTION_NAME);
+
   const existingDocument = await getDocumentBySlug(slug);
-  
-  // If document doesn't exist, throw an error
+
   if (!existingDocument) {
     throw new Error(`Document with slug ${slug} not found`);
   }
-   
-  // return silently if the document is read-only
+
   if (existingDocument.read_only === true) {
     return existingDocument;
   }
-  
-  // Build the update expression and attribute values
-  let updateExpression = 'SET ';
-  const expressionAttributeValues: { [key: string]: any } = {};
-  const expressionAttributeNames: { [key: string]: string } = {};
-
-  Object.keys(updates).forEach((key, index) => {
-    const valueKey = `:val${index}`;
-    const nameKey = `#attr${index}`;
-
-    updateExpression += index === 0 ? '' : ', ';
-    updateExpression += `${nameKey} = ${valueKey}`;
-
-    expressionAttributeValues[valueKey] = (updates as Record<string, any>)[key];
-    expressionAttributeNames[nameKey] = key;
-  });
-
-  const params = {
-    TableName: DOCUMENTS_TABLE_NAME,
-    Key: {
-      slug,
-      version,
-    },
-    UpdateExpression: updateExpression,
-    ExpressionAttributeValues: expressionAttributeValues,
-    ExpressionAttributeNames: expressionAttributeNames,
-    ReturnValues: 'ALL_NEW' as const,
-  };
 
   try {
-    const response = await docClient.send(new UpdateCommand(params));
-    return response.Attributes as Document;
+    const result = await collection.findOneAndUpdate(
+      { slug, version },
+      { $set: updates },
+      { returnDocument: 'after' },
+    );
+
+    return result?.value as Document;
   } catch (error) {
     console.error('Error updating document fields:', error);
     throw error;
@@ -93,22 +65,22 @@ export async function updateDocument(
  * Get a document by slug
  */
 export async function getDocumentBySlug(slug: string): Promise<Document | null> {
-  const params = {
-    TableName: DOCUMENTS_TABLE_NAME,
-    Key: {
-      slug,
-      version: 1, // Default version
-    },
-  };
+  const db = await connectToMongo();
+  const collection = db.collection<Document>(DOCUMENTS_COLLECTION_NAME);
 
   try {
-    const { Item } = await docClient.send(new GetCommand(params));
-    return Item as Document || null;
+    const document = await collection.findOne({ slug, version: 1 });
+
+    if (!document) return null;
+
+    const { _id, ...docWithoutId } = document as any;
+    return docWithoutId as Document;
   } catch (error) {
     console.error('Error fetching document:', error);
     throw error;
   }
 }
+
 
 /**
  * Check if a slug exists
@@ -125,19 +97,14 @@ export async function slugExists(slug: string): Promise<boolean> {
 
 /**
  * Check if a slug document is empty or doesn't exist
- * 
- * @param slug The slug to check
- * @returns true if document doesn't exist or is empty, false otherwise
  */
 export async function isSlugDocumentEmpty(slug: string): Promise<boolean> {
   try {
     const document = await fetchDocument(slug);
-    
-    // Return true if document is null or content is empty
     return !document || await isDocumentContentEmpty(document.content);
   } catch (error) {
     console.error(`Error checking if slug document is empty: ${error}`);
-    return true; // Consider non-existent or error as empty
+    return true;
   }
 }
 
@@ -149,18 +116,19 @@ export async function findAvailableSlug(
 ): Promise<string> {
   let attempts = 0;
   let lastSlug = '';
-  
+
   while (attempts < maxAttempts) {
     const slug = await generateRandomSlug();
     lastSlug = slug;
-    
+
     const isEmpty = await isSlugDocumentEmpty(slug);
     if (isEmpty) {
       return slug;
     }
+
     attempts++;
   }
-  
+
   console.warn(`Warning: Could not find empty slug after ${maxAttempts} attempts. Using last generated slug.`);
   return lastSlug;
 }

@@ -1,6 +1,5 @@
 import { Geist, Geist_Mono } from 'next/font/google';
 
-import UmamiAnalytics from './components/analytics/UmamiAnalytics';
 import Navbar from './components/Navbar';
 
 import type { Metadata } from 'next';
@@ -17,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'openleaf',
-  description: 'A free, open-source, minimalist browser-based rich text editor with markdown support. No signup required - just visit any URL and start writing instantly.',
+  title: 'hrleaf',
+  description: 'A free, open-source, minimalist browser-based rich text editor with markdown support. No signup required - just visit any URL and start writing instantly. Original name is openleaf',
   keywords: [
     'browser text editor', 
     'no-signup editor', 
@@ -89,10 +88,6 @@ export default function RootLayout({
         <Navbar />
         <main className="editor-main">
           {children}
-          <UmamiAnalytics 
-            websiteId={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID || ''}
-            scriptUrl={process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL || ''}
-          />
         </main>
       </body>
     </html>
