@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'hrleaf',
-  description: 'A free, open-source, minimalist browser-based rich text editor with markdown support. No signup required - just visit any URL and start writing instantly. Original name is openleaf',
+  description: 'A free, open-source, minimalist browser-based rich text editor with markdown support. No signup required - just visit any URL and start writing instantly.',
   keywords: [
     'browser text editor', 
     'no-signup editor', 
