@@ -1,4 +1,4 @@
-// import Image from 'next/image';
+import Image from 'next/image';
 import Link from 'next/link';
 
 // import { GitHubLink } from './icons/social-links/github';
@@ -10,15 +10,16 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-logo">
-          <Link href="/" target="_blank" rel="noopener noreferrer">
-            {/* <Image
-              src="/logo/animated-logo-minified.svg"
+          <Link href="/info" target="_blank" rel="noopener noreferrer" className='flex justify-center items-center gap-0.5 pr-2 py-0.5 rounded-xl bg-[#0e1d11]'>
+            <Image
+              src="/logo/logo.png"
               alt="Openleaf Logo"
-              width={150}
-              height={60}
+              width={600}
+              height={600}
               priority
-            /> */}
-            <h1 className='text-3xl font-bold text-[#2f855a]'>HRLeaf</h1>
+              className='h-10 w-auto'
+            />
+            <h1 className='text-2xl font-bold text-[#1eaa52]'>HRLeaf</h1>
           </Link>
         </div>
         {/* <div className="navbar-links">

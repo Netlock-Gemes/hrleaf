@@ -4,11 +4,11 @@
 
 :root {
   /* Core palette */
-  --primary: #2f855a; /* Main brand/accent color */
+  --primary: #434757; /* Main brand/accent color */
   --primary-rgb: 47, 133, 90; /* RGB values for opacity variants */
-  --surface-dark: #1e2d24; /* Main background */
-  --surface-medium: #2f3c33; /* Editor background */
-  --surface-light: #4a7856; /* Borders */
+  --surface-dark: #25272e; /* Main background */
+  --surface-medium: #17181b; /* Editor background */
+  --surface-light: #424857; /* Borders */
   --text: #e6ebe8; /* Main text color */
 
   /* Derived colors - automatically calculated from core palette */
@@ -30,10 +30,10 @@
   ); /* Hover state for primary elements */
 
   /* Surface variations */
-  --surface-dark-lighter: #252f2a; /* A lighter shade of surface-dark */
-  --surface-dark-darker: #171f1a; /* A darker shade of surface-dark */
+  --surface-dark-lighter: #17181b; /* A lighter shade of surface-dark */
+  --surface-dark-darker: #0c0a08; /* A darker shade of surface-dark */
   --surface-medium-lighter: #3a473e; /* A lighter shade of surface-medium */
-  --surface-medium-darker: #2c352e; /* A darker shade of surface-medium */
+  --surface-medium-darker: #101012; /* A darker shade of surface-medium */
 
   /* Text variations for different emphasis levels */
   --text-rgb: 230, 235, 232; /* RGB values for text opacity variants */
@@ -100,7 +100,7 @@ body {
   }
 
   .navbar-container {
-    @apply flex justify-between items-center mx-auto px-6 h-16 max-w-7xl max-sm:h-14;
+    @apply flex justify-start items-center mx-auto md:px-6 h-16 max-w-7xl max-sm:h-14;
   }
 
   .navbar-logo {
@@ -147,7 +147,7 @@ body {
   .editor-area {
     @apply w-full max-w-4xl flex-grow flex flex-col relative
            bg-editor-bg shadow-lg cursor-text
-           rounded-squircle;
+           rounded-xl md:mb-5;
   }
 
   .editor-wrapper {
@@ -473,7 +473,7 @@ body {
   .editor-table-add-columns,
   .editor-table-add-rows {
     @apply absolute bg-accent animate-[table-controls_0.2s_ease] border-0
-          cursor-pointer hover:bg-accent-80 rounded-squircle-xs max-sm:rounded-squircle-xxs z-50;
+          cursor-pointer hover:bg-[#424867] rounded-squircle-xs max-sm:rounded-squircle-xxs z-50;
   }
 
   .editor-table-add-columns::before,
