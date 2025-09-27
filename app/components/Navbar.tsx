@@ -10,7 +10,7 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-logo">
-          <Link href="/info" target="_blank" rel="noopener noreferrer" className='flex justify-center items-center gap-0.5 pr-2 py-0.5 rounded-xl bg-[#0e1d11]'>
+          <Link href="/info" target="_blank" rel="noopener noreferrer" className='flex justify-center items-center gap-0.5 pr-2 py-0.5 rounded-xl bg-[#0e1d11] ml-2 md:ml-0'>
             <Image
               src="/logo/logo.png"
               alt="Openleaf Logo"

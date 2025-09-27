@@ -31,7 +31,7 @@
 
   /* Surface variations */
   --surface-dark-lighter: #17181b; /* A lighter shade of surface-dark */
-  --surface-dark-darker: #0c0a08; /* A darker shade of surface-dark */
+  --surface-dark-darker: #000000; /* A darker shade of surface-dark */
   --surface-medium-lighter: #3a473e; /* A lighter shade of surface-medium */
   --surface-medium-darker: #101012; /* A darker shade of surface-medium */
 
@@ -100,7 +100,7 @@ body {
   }
 
   .navbar-container {
-    @apply flex justify-start items-center mx-auto md:px-6 h-16 max-w-7xl max-sm:h-14;
+    @apply flex justify-start items-center mx-auto h-16 max-w-4xl max-sm:h-14;
   }
 
   .navbar-logo {
@@ -147,7 +147,7 @@ body {
   .editor-area {
     @apply w-full max-w-4xl flex-grow flex flex-col relative
            bg-editor-bg shadow-lg cursor-text
-           rounded-xl md:mb-5;
+           rounded-xl md:mb-5 mb-2 mx-2;
   }
 
   .editor-wrapper {
