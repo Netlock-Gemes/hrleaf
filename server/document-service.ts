@@ -91,7 +91,10 @@ export async function getAllDocuments(): Promise<Document[]> {
   const collection = db.collection<Document>(DOCUMENTS_COLLECTION_NAME);
 
   try {
-    const documents = await collection.find({}).toArray();
+    const documents = await collection
+      .find({})
+      .sort({ updated_at: -1 })
+      .toArray();
 
     // Remove _id field before returning
     return documents.map(
@@ -119,8 +122,10 @@ export async function slugExists(slug: string): Promise<boolean> {
 /**
  * Flip the read_only field
  */
-export async function toggleReadOnly(slug: string, current: boolean): Promise<Document> {
-
+export async function toggleReadOnly(
+  slug: string,
+  current: boolean
+): Promise<Document> {
   return await updateDocument(slug, { read_only: !current });
 }
 

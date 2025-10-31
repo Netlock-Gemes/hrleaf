@@ -35,11 +35,11 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 
 function formatDate(dateString?: string) {
-  if (!dateString) return "—"; // fallback when no date
+  if (!dateString) return "—";
   const date = new Date(dateString);
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("en-GB", {
     year: "numeric",
-    month: "short",
+    month: "numeric",
     day: "2-digit",
     // hour: "2-digit",
     // minute: "2-digit",
@@ -66,7 +66,7 @@ const columns: ColumnDef<Document>[] = [
   //   },
   {
     accessorKey: "read_only",
-    header: "Read Only",
+    header: "Locked",
     cell: ({ row }) => (row.original.read_only ? "Yes" : "No"),
   },
   //   {
@@ -76,7 +76,7 @@ const columns: ColumnDef<Document>[] = [
   //   },
   {
     accessorKey: "updated_at",
-    header: "Updated At",
+    header: "Modified",
     cell: ({ row }) => formatDate(row.original.updated_at),
   },
 ];
@@ -84,7 +84,10 @@ const columns: ColumnDef<Document>[] = [
 const Page = () => {
   const router = useRouter();
   const [data, setData] = useState<Document[]>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "updated_at", desc: true },
+  ]);
+
   const [globalFilter, setGlobalFilter] = useState("");
   const [newDocName, setNewDocName] = useState("");
 
@@ -100,6 +103,7 @@ const Page = () => {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    enableSortingRemoval: false,
   });
 
   useEffect(() => {
@@ -128,7 +132,8 @@ const Page = () => {
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="default" className="bg-white hover:bg-neutral-200">
-              <Plus /> New Document
+              <Plus />
+              <span className="hidden md:block">New Document</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md max-w-sm rounded-xl -mt-20 md:mt-0">
@@ -174,51 +179,97 @@ const Page = () => {
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="cursor-pointer select-none bg-surface-dark"
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                    {{
-                      asc: " ▲",
-                      desc: " ▼",
-                    }[header.column.getIsSorted() as string] ?? null}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const id = header.id;
+                  const headerText =
+                    typeof header.column.columnDef.header === "string"
+                      ? header.column.columnDef.header
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        );
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className={`
+              cursor-pointer select-none bg-surface-dark
+              ${id === "slug" ? "md:w-[65%] w-[60%]" : ""}
+              ${id === "read_only" ? "md:w-[10%] w-[10%] text-center" : ""}
+              ${id === "updated_at" ? "md:w-[25%] w-[30%] text-right pr-3" : ""}
+            `}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {headerText}
+                      {{
+                        asc: " ▲",
+                        desc: " ▼",
+                      }[header.column.getIsSorted() as string] ?? null}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
+
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {data.length === 0 ? (
+              <>
+                {[...Array(5)].map((_, i) => (
+                  <TableRow
+                    key={i}
+                    className="animate-pulse border-b border-neutral-800/40"
+                  >
+                    <TableCell className="py-2.5 w-[55%]">
+                      <div className="h-4 w-3/5 bg-gradient-to-r from-neutral-800/40 via-neutral-700/30 to-neutral-800/40 rounded" />
+                    </TableCell>
+                    <TableCell className="py-2.5 text-center w-[15%]">
+                      <div className="h-4 w-10 mx-auto bg-gradient-to-r from-neutral-800/40 via-neutral-700/30 to-neutral-800/40 rounded" />
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right pr-3 w-[30%]">
+                      <div className="h-4 w-24 ml-auto bg-gradient-to-r from-neutral-800/40 via-neutral-700/30 to-neutral-800/40 rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-sm">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const id = cell.column.id;
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={`
+                md:text-sm text-xs
+                ${id === "slug" ? "md:w-[65%] w-[60%]" : ""}
+                ${id === "read_only" ? "md:w-[10%] w-[10%] text-center" : ""}
+                ${
+                  id === "updated_at"
+                    ? "md:w-[25%] w-[30%] text-right pr-3"
+                    : ""
+                }
+              `}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                {" "}
                 <TableCell
                   colSpan={columns.length}
                   className="text-center text-muted-foreground py-6"
                 >
-                  {" "}
-                  No documents found.{" "}
-                </TableCell>{" "}
+                  No documents found.
+                </TableCell>
               </TableRow>
-            )}{" "}
+            )}
           </TableBody>
         </Table>
       </div>
