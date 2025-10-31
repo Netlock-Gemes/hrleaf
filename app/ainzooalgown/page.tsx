@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Document } from "@/types";
 import { getAllDocuments } from "@/server/document-service";
 import {
@@ -10,6 +9,7 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -23,16 +23,9 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import CreateDocumentDialog from "@/components/ui/document-create-dialog";
 
 function formatDate(dateString?: string) {
   if (!dateString) return "—";
@@ -41,16 +34,14 @@ function formatDate(dateString?: string) {
     year: "numeric",
     month: "numeric",
     day: "2-digit",
-    // hour: "2-digit",
-    // minute: "2-digit",
   }).format(date);
 }
 
-// Define the table columns
 const columns: ColumnDef<Document>[] = [
   {
     accessorKey: "slug",
     header: "Slug",
+    enableSorting: false,
     cell: ({ row }) => {
       const slug = row.original.slug;
       return (
@@ -60,36 +51,27 @@ const columns: ColumnDef<Document>[] = [
       );
     },
   },
-  //   {
-  //     accessorKey: "version",
-  //     header: "Version",
-  //   },
   {
     accessorKey: "read_only",
     header: "Locked",
+    enableSorting: false,
     cell: ({ row }) => (row.original.read_only ? "Yes" : "No"),
   },
-  //   {
-  //     accessorKey: "created_at",
-  //     header: "Created At",
-  //     cell: ({ row }) => formatDate(row.original.created_at),
-  //   },
   {
     accessorKey: "updated_at",
     header: "Modified",
+    enableSorting: true,
     cell: ({ row }) => formatDate(row.original.updated_at),
   },
 ];
 
 const Page = () => {
-  const router = useRouter();
   const [data, setData] = useState<Document[]>([]);
   const [sorting, setSorting] = useState<SortingState>([
     { id: "updated_at", desc: true },
   ]);
 
   const [globalFilter, setGlobalFilter] = useState("");
-  const [newDocName, setNewDocName] = useState("");
 
   const table = useReactTable({
     data,
@@ -103,7 +85,13 @@ const Page = () => {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     enableSortingRemoval: false,
+    initialState: {
+      pagination: {
+        pageSize: 15,
+      },
+    },
   });
 
   useEffect(() => {
@@ -118,9 +106,9 @@ const Page = () => {
     fetchDocs();
   }, []);
 
-  const handleCreate = () => {
-    if (!newDocName.trim()) return;
-    router.push(`/${newDocName}`);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    setGlobalFilter(value);
   };
 
   return (
@@ -129,38 +117,12 @@ const Page = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">All Documents</h1>
 
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="default" className="bg-white hover:bg-neutral-200">
-              <Plus />
-              <span className="hidden md:block">New Document</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md max-w-sm rounded-xl -mt-20 md:mt-0">
-            <DialogHeader>
-              <DialogTitle>Create New Document</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-4">
-              <Input
-                placeholder="Enter document name"
-                type="text"
-                value={newDocName}
-                onChange={(e) => setNewDocName(e.target.value)}
-                className="bg-[#181818]"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                variant="default"
-                onClick={handleCreate}
-                disabled={!newDocName.trim()}
-                className="bg-white"
-              >
-                Create
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <CreateDocumentDialog>
+          <Button variant="default" className="bg-white hover:bg-neutral-200">
+            <Plus />
+            <span className="hidden md:block">New Document</span>
+          </Button>
+        </CreateDocumentDialog>
       </div>
 
       {/* Search */}
@@ -168,8 +130,8 @@ const Page = () => {
         <Input
           placeholder="Search documents..."
           value={globalFilter ?? ""}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="bg-[#181818]"
+          onChange={handleChange}
+          className="bg-[#181818] text-sm"
         />
       </div>
 
@@ -192,19 +154,33 @@ const Page = () => {
                   return (
                     <TableHead
                       key={header.id}
-                      className={`
-              cursor-pointer select-none bg-surface-dark
-              ${id === "slug" ? "md:w-[65%] w-[60%]" : ""}
-              ${id === "read_only" ? "md:w-[10%] w-[10%] text-center" : ""}
-              ${id === "updated_at" ? "md:w-[25%] w-[30%] text-right pr-3" : ""}
-            `}
+                      className={`select-none bg-surface-dark
+                          ${
+                            header.column.getCanSort()
+                              ? "cursor-pointer"
+                              : "cursor-default"
+                          }
+                          ${id === "slug" ? "md:w-[65%] w-[60%]" : ""}
+                          ${
+                            id === "read_only"
+                              ? "md:w-[10%] w-[10%] text-center"
+                              : ""
+                          }
+                          ${
+                            id === "updated_at"
+                              ? "md:w-[25%] w-[30%] text-right pr-3"
+                              : ""
+                          }
+                      `}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       {headerText}
-                      {{
-                        asc: " ▲",
-                        desc: " ▼",
-                      }[header.column.getIsSorted() as string] ?? null}
+                      {header.column.id === "updated_at" &&
+                        ({
+                          asc: " ▲",
+                          desc: " ▼",
+                        }[header.column.getIsSorted() as string] ??
+                          null)}
                     </TableHead>
                   );
                 })}
@@ -240,16 +216,19 @@ const Page = () => {
                     return (
                       <TableCell
                         key={cell.id}
-                        className={`
-                md:text-sm text-xs
-                ${id === "slug" ? "md:w-[65%] w-[60%]" : ""}
-                ${id === "read_only" ? "md:w-[10%] w-[10%] text-center" : ""}
-                ${
-                  id === "updated_at"
-                    ? "md:w-[25%] w-[30%] text-right pr-3"
-                    : ""
-                }
-              `}
+                        className={`md:text-sm text-xs
+                            ${id === "slug" ? "md:w-[65%] w-[60%]" : ""}
+                            ${
+                              id === "read_only"
+                                ? "md:w-[10%] w-[10%] text-center"
+                                : ""
+                            }
+                            ${
+                              id === "updated_at"
+                                ? "md:w-[25%] w-[30%] text-right pr-3"
+                                : ""
+                            }
+                        `}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
@@ -273,6 +252,45 @@ const Page = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {data.length > 0 && (
+        <div className="flex justify-between items-center mt-5 text-sm text-muted-foreground">
+          <div>
+            Page{" "}
+            <span className="font-medium text-foreground">
+              {table.getState().pagination.pageIndex + 1}
+            </span>{" "}
+            of{" "}
+            <span className="font-medium text-foreground">
+              {table.getPageCount()}
+            </span>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="flex items-center gap-1 bg-background border-neutral-800 md:hover:bg-neutral-900"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Prev
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="flex items-center gap-1 bg-background border-neutral-800 md:hover:bg-neutral-900"
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

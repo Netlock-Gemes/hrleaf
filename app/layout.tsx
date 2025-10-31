@@ -1,77 +1,79 @@
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono } from "next/font/google";
 
-import Navbar from './components/Navbar';
+import Navbar from "./components/Navbar";
+import { Toaster } from "@/components/ui/sonner";
 
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata } from "next";
+import "./globals.css";
 
 const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: 'hrleaf',
-  description: 'A free, open-source, minimalist browser-based rich text editor with markdown support. No signup required - just visit any URL and start writing instantly.',
+  title: "hrleaf",
+  description:
+    "A free, open-source, minimalist browser-based rich text editor with markdown support. No signup required - just visit any URL and start writing instantly.",
   keywords: [
-    'browser text editor', 
-    'no-signup editor', 
-    'markdown editor', 
-    'minimalist editor', 
-    'instant notes', 
-    'ephemeral documents', 
-    'collaborative editor',
-    'real-time text editor',
-    'open source editor',
-    'temporary notes',
-    'online notepad',
-    'notes',
-    'quick notes',
-    'online notes',
-    'temp notes',
-    'temporary notes',
-    'online scratchpad',
-    'quick notes tool',
-    'browser notepad',
-    'instant document sharing',
-    'web-based editor',
-    'plain text editor',
-    'lexical editor', 
+    "browser text editor",
+    "no-signup editor",
+    "markdown editor",
+    "minimalist editor",
+    "instant notes",
+    "ephemeral documents",
+    "collaborative editor",
+    "real-time text editor",
+    "open source editor",
+    "temporary notes",
+    "online notepad",
+    "notes",
+    "quick notes",
+    "online notes",
+    "temp notes",
+    "temporary notes",
+    "online scratchpad",
+    "quick notes tool",
+    "browser notepad",
+    "instant document sharing",
+    "web-based editor",
+    "plain text editor",
+    "lexical editor",
   ],
   icons: {
     icon: [
-      { url: '/favicon/favicon.ico' },
-      { url: '/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: "/favicon/favicon.ico" },
+      { url: "/favicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
     // Apple devices
     apple: [
       {
-        url: '/favicon/apple-icon.png',
-        sizes: '180x180',
-        type: 'image/png',
+        url: "/favicon/apple-icon.png",
+        sizes: "180x180",
+        type: "image/png",
       },
     ],
     // Other device-specific icons
     other: [
       {
-        url: '/favicon/android-chrome-192x192.png',
-        sizes: '192x192',
-        type: 'image/png',
+        url: "/favicon/android-chrome-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
       },
       {
-        url: '/favicon/android-chrome-512x512.png',
-        sizes: '512x512',
-        type: 'image/png',
+        url: "/favicon/android-chrome-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
       },
     ],
   },
-  manifest: '/favicon/manifest.json',
+  manifest: "/favicon/manifest.json",
 };
 
 export default function RootLayout({
@@ -81,10 +83,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <Navbar />
         <main className="editor-main">
           {children}
+          <Toaster position="top-center" richColors />
         </main>
       </body>
     </html>
