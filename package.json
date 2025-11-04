@@ -11,8 +11,6 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.799.0",
-    "@aws-sdk/lib-dynamodb": "^3.799.0",
     "@lexical/code": "^0.31.1",
     "@lexical/link": "^0.31.1",
     "@lexical/list": "^0.31.1",
@@ -26,6 +24,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.6",
     "@tanstack/react-table": "^8.21.3",
+    "better-auth": "^1.3.34",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "katex": "^0.16.22",
