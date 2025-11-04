@@ -29,7 +29,7 @@ export default function CreateDocumentDialog({
   const [isPending, startTransition] = useTransition();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
     setNewDocName(value);
   };
 
