@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { signOut, useSession } from "@/lib/auth-client";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 // import { GitHubLink } from './icons/social-links/github';
 // import { InfoLink } from './icons/social-links/info';
@@ -11,6 +12,13 @@ import Link from "next/link";
 
 export default function Navbar() {
   const { data: session } = useSession();
+  
+  const pathname = usePathname();
+  const hiddenRoutes = ["/login", "/signup"];
+
+  const shouldHide = hiddenRoutes.some((route) => pathname?.startsWith(route));
+
+  if (shouldHide) return null;
 
   return (
     <nav className="navbar">
@@ -20,7 +28,7 @@ export default function Navbar() {
             href="/info"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex justify-center items-center gap-0.5 pr-2 py-0.5 rounded-xl bg-[#0e1d11] ml-2 md:ml-0"
+            className="flex justify-center items-center gap-0.5 pr-2 py-0.5 rounded-xl backdrop-blur-xl bg-[#0e1d11]/60 border border-white/10 ml-2 md:ml-0"
           >
             <Image
               src="/logo/logo.png"
@@ -42,12 +50,12 @@ export default function Navbar() {
           {session ? (
             <div className="flex items-center gap-2">
               <span>{session.user.name}</span>
-              <Button onClick={() => signOut()} className="">
+              <Button onClick={() => signOut()} className="rounded-xl">
                 Logout
               </Button>
             </div>
           ) : (
-            <Button>
+            <Button className="rounded-xl">
               <Link href="/login">Login</Link>
             </Button>
           )}
