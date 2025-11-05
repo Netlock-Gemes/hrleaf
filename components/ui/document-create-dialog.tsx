@@ -34,6 +34,7 @@ export default function CreateDocumentDialog({
 
   const [newDocName, setNewDocName] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [existsDialogOpen, setExistsDialogOpen] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -49,6 +50,7 @@ export default function CreateDocumentDialog({
         const exists = await slugExists(newDocName.trim());
         if (exists) {
           toast.error("A document with this name already exists.");
+          setExistsDialogOpen(true);
           return;
         }
 
@@ -57,45 +59,85 @@ export default function CreateDocumentDialog({
       } catch (error) {
         console.error("Error checking document:", error);
         toast.error("Something went wrong. Please try again.");
-      } finally{
-        setNewDocName("");
       }
     });
   };
 
   return (
-    <Dialog open={actualOpen} onOpenChange={setActualOpen}>
-      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-md max-w-sm rounded-xl -mt-20 md:mt-0">
-        <DialogHeader>
-          <DialogTitle>Create New Document</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleCreate} className="flex flex-col gap-4">
-          <Input
-            placeholder="Enter document name"
-            type="text"
-            value={newDocName}
-            onChange={handleChange}
-            className="bg-[#181818] text-sm"
-          />
-          <DialogFooter>
+    <>
+      <Dialog open={actualOpen} onOpenChange={setActualOpen}>
+        {children && <DialogTrigger asChild>{children}</DialogTrigger>}
+        <DialogContent className="sm:max-w-md max-w-sm rounded-xl -mt-20 md:mt-0">
+          <DialogHeader>
+            <DialogTitle>Create New Document</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <Input
+              placeholder="Enter document name"
+              type="text"
+              value={newDocName}
+              onChange={handleChange}
+              className="bg-[#181818] text-sm"
+            />
+            <DialogFooter>
+              <Button
+                type="submit"
+                variant="default"
+                disabled={!newDocName.trim() || isPending}
+                className="bg-white"
+              >
+                {isPending ? (
+                  <span className="flex justify-center items-center gap-1">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Creating
+                  </span>
+                ) : (
+                  "Create"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Existing Document Dialog */}
+      <Dialog open={existsDialogOpen} onOpenChange={setExistsDialogOpen}>
+        <DialogContent className="sm:max-w-md max-w-sm rounded-xl text-center">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              Document Already Exists
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-neutral-400 text-sm mt-1">
+            A document named{" "}
+            <span className="font-medium text-white">{newDocName}</span> already
+            exists. You can open it directly or choose a different name.
+          </p>
+          <DialogFooter className="mt-4 flex justify-center gap-3">
             <Button
-              type="submit"
-              variant="default"
-              disabled={!newDocName.trim() || isPending}
-              className="bg-white"
+              variant="outline"
+              onClick={() => {
+                setExistsDialogOpen(false);
+                setActualOpen(true);
+                setNewDocName("");
+              }}
+              className="border-neutral-700 hover:bg-neutral-800"
             >
-              {isPending ? (
-                <span className="flex justify-center items-center gap-1">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Creating
-                </span>
-              ) : (
-                "Create"
-              )}
+              Choose Different Name
+            </Button>
+            <Button
+              onClick={() => {
+                setExistsDialogOpen(false);
+                setActualOpen(false);
+                console.log(newDocName);
+                router.push(`/${newDocName.trim()}`);
+              }}
+              className="bg-white text-black hover:bg-neutral-200"
+            >
+              Go to Document
             </Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
