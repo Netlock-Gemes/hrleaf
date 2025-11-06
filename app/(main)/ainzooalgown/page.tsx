@@ -134,10 +134,10 @@ const Page = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl md:text-2xl font-bold">All Documents</h1>
         <CreateDocumentDialog>
-          <Button variant="default" className="bg-white hover:bg-neutral-200">
-            <Plus />
+          <button className="bg-white text-primary-foreground shadow hover:bg-primary/90 flex justify-center items-center rounded-md px-2 py-1.5 md:px-3 md:py-2 md:h-9 gap-1 font-medium text-sm">
+            <Plus className="h-5 w-5 md:h-4 md:w-4" />
             <span className="hidden md:block">New Document</span>
-          </Button>
+          </button>
         </CreateDocumentDialog>
       </div>
 
@@ -207,18 +207,18 @@ const Page = () => {
           <TableBody>
             {data.length === 0 ? (
               <>
-                {[...Array(5)].map((_, i) => (
+                {[...Array(pageSize)].map((_, i) => (
                   <TableRow
                     key={i}
                     className="animate-pulse border-b border-neutral-800/40"
                   >
-                    <TableCell className="py-2.5 w-[55%]">
+                    <TableCell className="md:py-2.5 w-[55%]">
                       <div className="h-4 w-3/5 bg-gradient-to-r from-neutral-800/40 via-neutral-700/30 to-neutral-800/40 rounded" />
                     </TableCell>
-                    <TableCell className="py-2.5 text-center w-[15%]">
+                    <TableCell className="md:py-2.5 text-center w-[15%]">
                       <div className="h-4 w-10 mx-auto bg-gradient-to-r from-neutral-800/40 via-neutral-700/30 to-neutral-800/40 rounded" />
                     </TableCell>
-                    <TableCell className="py-2.5 text-right pr-3 w-[30%]">
+                    <TableCell className="md:py-2.5 text-right pr-3 w-[30%]">
                       <div className="h-4 w-24 ml-auto bg-gradient-to-r from-neutral-800/40 via-neutral-700/30 to-neutral-800/40 rounded" />
                     </TableCell>
                   </TableRow>
