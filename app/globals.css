@@ -143,7 +143,7 @@ body {
   .editor-area {
     @apply w-full max-w-4xl flex-grow flex flex-col relative
            bg-editor-bg shadow-lg cursor-text
-           rounded-xl mb-5 mx-2 border-[0.5px] border-white/10;
+           rounded-xl mb-5 mx-3 md:mx-0 border-[0.5px] border-white/10 overflow-hidden;
   }
 
   .editor-wrapper {

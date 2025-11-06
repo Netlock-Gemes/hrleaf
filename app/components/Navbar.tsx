@@ -18,7 +18,7 @@ export default async function Navbar() {
             href="/info"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex justify-center items-center gap-0.5 pr-2 py-0.5 rounded-xl backdrop-blur-xl bg-[#0e1d11]/60 border border-white/10 ml-2 md:ml-0"
+            className="flex justify-center items-center gap-0.5 pr-2 py-0.5 rounded-xl backdrop-blur-xl bg-[#0e1d11]/60 border border-white/10 ml-3 md:ml-0"
           >
             <Image
               src="/logo/logo.png"
@@ -33,7 +33,7 @@ export default async function Navbar() {
         </div>
 
         {/* Right section */}
-        <div className="flex items-center gap-2 pr-2 md:pr-0">
+        <div className="flex items-center gap-2 mr-3 md:mr-0">
           {session ? (
             <UserMenu name={session.user.name} image={session.user.image} />
           ) : null}

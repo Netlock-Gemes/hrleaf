@@ -129,7 +129,7 @@ const Page = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto w-full flex flex-col pb-5 px-5 md:px-0 min-h-[80svh]">
+    <div className="max-w-4xl mx-auto w-full flex flex-col pb-5 px-3 md:px-0 min-h-[80svh]">
       {/* Header + Actions */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl md:text-2xl font-bold">All Documents</h1>
