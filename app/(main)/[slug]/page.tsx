@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 
 import { fetchDocument } from '@/server/document-actions';
 
-import EditorContainer from '../components/editor/EditorContainer';
+import EditorContainer from '../../components/editor/EditorContainer';
 
 interface EditorPageProps {
   params: Promise<{ slug: string }>;

@@ -1,24 +1,16 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
-import { signOut, useSession } from "@/lib/auth-client";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import SignOutButton from "./SignOutButton";
 
-// import { GitHubLink } from './icons/social-links/github';
-// import { InfoLink } from './icons/social-links/info';
-// import { RedditLink } from './icons/social-links/reddit';
+export default async function Navbar() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-export default function Navbar() {
-  const { data: session } = useSession();
-  
-  const pathname = usePathname();
-  const hiddenRoutes = ["/login", "/signup"];
-
-  const shouldHide = hiddenRoutes.some((route) => pathname?.startsWith(route));
-
-  if (shouldHide) return null;
+  const logOut = async () => {};
 
   return (
     <nav className="navbar">
@@ -41,18 +33,11 @@ export default function Navbar() {
             <h1 className="text-2xl font-bold text-[#1eaa52]">HRLeaf</h1>
           </Link>
         </div>
-        {/* <div className="navbar-links">
-          <InfoLink />
-          <RedditLink />
-          <GitHubLink />
-        </div> */}
         <div className="flex gap-2 pr-2 md:pr-0">
           {session ? (
             <div className="flex items-center gap-2">
               <span>{session.user.name}</span>
-              <Button onClick={() => signOut()} className="rounded-xl">
-                Logout
-              </Button>
+              <SignOutButton />
             </div>
           ) : (
             <Button className="rounded-xl">
