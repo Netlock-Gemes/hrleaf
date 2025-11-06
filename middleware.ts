@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users from /login to home
   if (pathname === "/login" && sessionCookie) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/ainzooalgown", request.url));
   }
 
   // Protect /ainzooalgown routes for unauthenticated users

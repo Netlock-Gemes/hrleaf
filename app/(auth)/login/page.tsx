@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import Image from "next/image";
 import { useState } from "react";
-import { authClient, githubSignIn } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 import {
   Card,
   CardHeader,
@@ -13,22 +13,33 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FcGoogle } from "react-icons/fc";
-import { Github } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
-    setError(null);
     setLoading(true);
+    toast.dismiss();
+
     try {
-      const data = await authClient.signIn.social({
+      const { error } = await authClient.signIn.social({
         provider: "google",
+        callbackURL: "/ainzooalgown",
+        errorCallbackURL: "/login?error=google",
+        newUserCallbackURL: "/welcome",
+        disableRedirect: false,
       });
-      // if (error) setError(error.message || "Google sign-in failed");
+
+      if (error) {
+        toast.error(error.message || "Google sign-in failed");
+      } else {
+        toast.success("Redirecting to Google...");
+      }
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      console.error("Google sign-in error:", err);
+      toast.error(err?.message || "Something went wrong during sign-in");
     } finally {
       setLoading(false);
     }
@@ -64,29 +75,18 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-white text-black hover:bg-slate-100 transition-all font-semibold flex items-center justify-center gap-2"
             >
-              <FcGoogle className="w-5 h-5" />
-              {loading ? "Connecting..." : "Continue with Google"}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <FcGoogle className="w-5 h-5" />
+                  Continue with Google
+                </>
+              )}
             </Button>
-
-            {error && (
-              <p className="text-sm text-red-400 text-center mt-2">{error}</p>
-            )}
-          </CardContent>
-          <CardContent className="flex flex-col gap-4">
-            <Button
-              onClick={() => {
-                githubSignIn();
-              }}
-              disabled={loading}
-              className="w-full bg-white text-black hover:bg-slate-100 transition-all font-semibold flex items-center justify-center gap-2"
-            >
-              <Github className="w-5 h-5" />
-              {loading ? "Connecting..." : "Continue with Github"}
-            </Button>
-
-            {error && (
-              <p className="text-sm text-red-400 text-center mt-2">{error}</p>
-            )}
           </CardContent>
         </Card>
       </motion.div>

@@ -17,14 +17,21 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 interface CreateDocumentDialogProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export default function CreateDocumentDialog({
   children,
+  open: controlledOpen,
+  onOpenChange,
 }: CreateDocumentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const actualOpen = controlledOpen ?? open;
+  const setActualOpen = onOpenChange ?? setOpen;
+
   const [newDocName, setNewDocName] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -40,24 +47,25 @@ export default function CreateDocumentDialog({
     startTransition(async () => {
       try {
         const exists = await slugExists(newDocName.trim());
-
         if (exists) {
           toast.error("A document with this name already exists.");
           return;
         }
 
-        setOpen(false);
+        setActualOpen(false);
         router.push(`/${newDocName.trim()}`);
       } catch (error) {
         console.error("Error checking document:", error);
         toast.error("Something went wrong. Please try again.");
+      } finally{
+        setNewDocName("");
       }
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={actualOpen} onOpenChange={setActualOpen}>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-md max-w-sm rounded-xl -mt-20 md:mt-0">
         <DialogHeader>
           <DialogTitle>Create New Document</DialogTitle>

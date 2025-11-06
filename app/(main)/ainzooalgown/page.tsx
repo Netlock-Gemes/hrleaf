@@ -70,8 +70,20 @@ const Page = () => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "updated_at", desc: true },
   ]);
-
   const [globalFilter, setGlobalFilter] = useState("");
+  const [pageSize, setPageSize] = useState(15);
+
+  // Responsive page size based on screen width
+  useEffect(() => {
+    const handleResize = () => {
+      const isDesktop = window.matchMedia("(min-width: 768px)").matches;
+      setPageSize(isDesktop ? 10 : 15);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const table = useReactTable({
     data,
@@ -89,10 +101,15 @@ const Page = () => {
     enableSortingRemoval: false,
     initialState: {
       pagination: {
-        pageSize: 15,
+        pageSize,
       },
     },
   });
+
+  // Update page size dynamically 
+  useEffect(() => {
+    table.setPageSize(pageSize);
+  }, [pageSize, table]);
 
   useEffect(() => {
     async function fetchDocs() {
@@ -112,11 +129,10 @@ const Page = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto w-full flex flex-col py-5 px-5 md:px-0 min-h-[100svh] shadow-lg">
+    <div className="max-w-4xl mx-auto w-full flex flex-col pb-5 px-5 md:px-0 min-h-[80svh]">
       {/* Header + Actions */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">All Documents</h1>
-
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl md:text-2xl font-bold">All Documents</h1>
         <CreateDocumentDialog>
           <Button variant="default" className="bg-white hover:bg-neutral-200">
             <Plus />
