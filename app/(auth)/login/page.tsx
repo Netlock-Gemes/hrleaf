@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import Image from "next/image";
 import { useState } from "react";
-import { authClient } from "@/lib/auth-client";
+import { authClient, githubSignIn } from "@/lib/auth-client";
 import {
   Card,
   CardHeader,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FcGoogle } from "react-icons/fc";
+import { Github } from "lucide-react";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -22,14 +23,10 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { error } = await authClient.signIn.social({
+      const data = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/",
-        errorCallbackURL: "/login?error=google",
-        newUserCallbackURL: "/",
-        disableRedirect: false,
       });
-      if (error) setError(error.message || "Google sign-in failed");
+      // if (error) setError(error.message || "Google sign-in failed");
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -69,6 +66,22 @@ export default function LoginPage() {
             >
               <FcGoogle className="w-5 h-5" />
               {loading ? "Connecting..." : "Continue with Google"}
+            </Button>
+
+            {error && (
+              <p className="text-sm text-red-400 text-center mt-2">{error}</p>
+            )}
+          </CardContent>
+          <CardContent className="flex flex-col gap-4">
+            <Button
+              onClick={() => {
+                githubSignIn();
+              }}
+              disabled={loading}
+              className="w-full bg-white text-black hover:bg-slate-100 transition-all font-semibold flex items-center justify-center gap-2"
+            >
+              <Github className="w-5 h-5" />
+              {loading ? "Connecting..." : "Continue with Github"}
             </Button>
 
             {error && (
