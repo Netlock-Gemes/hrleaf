@@ -11,11 +11,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protect /ainzooalgown routes for unauthenticated users
-  // if (pathname.startsWith("/ainzooalgown") && !sessionCookie) {
-  //   const loginUrl = new URL("/login", request.url);
-  //   loginUrl.searchParams.set("redirect", pathname);
-  //   return NextResponse.redirect(loginUrl);
-  // }
+  if (pathname.startsWith("/ainzooalgown") && !sessionCookie) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
 
   return NextResponse.next();
 }

@@ -105,7 +105,7 @@ export default function UserMenu({ name, image }: UserMenuProps) {
 
       {/* Logout Confirmation Dialog */}
       <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-sm rounded-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-start">
               Are you sure?
@@ -115,7 +115,7 @@ export default function UserMenu({ name, image }: UserMenuProps) {
               sign in again to access your documents.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-row justify-end">
+          <AlertDialogFooter>
             <AlertDialogCancel className="cursor-pointer">
               Cancel
             </AlertDialogCancel>
@@ -123,7 +123,7 @@ export default function UserMenu({ name, image }: UserMenuProps) {
               onClick={handleLogout}
               className="cursor-pointer bg-red-500 text-white hover:bg-red-600"
             >
-              Continue
+              Log Out
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
