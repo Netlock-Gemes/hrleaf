@@ -1,56 +1,59 @@
 import Link from "next/link";
 
+import SiteHeader from "@/app/components/SiteHeader";
+
 export const metadata = {
-  title: "Privacy Policy | Openleaf",
-  description: "Privacy Policy for Openleaf.",
+  title: "Privacy Policy | HRLeaf",
+  description: "Privacy Policy for HRLeaf.",
 };
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-white text-neutral-900">
-      <div className="mx-auto max-w-3xl px-6 py-16 sm:px-8 lg:py-24">
+    <main className="min-h-screen">
+      <SiteHeader />
+      <div className="mx-auto max-w-[44rem] px-5 py-12 sm:px-8 lg:py-20">
         <header className="mb-12">
           <Link
             href="/"
-            className="text-sm font-medium text-neutral-500 transition hover:text-neutral-900"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
-            ← Back to Openleaf
+            ← Back to HRLeaf
           </Link>
 
-          <h1 className="mt-8 text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="mt-8 text-[2.25rem] font-semibold leading-tight tracking-[-0.02em] sm:text-[2.75rem]">
             Privacy Policy
           </h1>
 
-          <p className="mt-4 text-sm text-neutral-500">
+          <p className="tabular mt-3 text-sm text-muted-foreground">
             Last updated: September 25, 2026
           </p>
         </header>
 
-        <div className="space-y-10 text-[15px] leading-7 text-neutral-700">
+        <div className="space-y-10 text-[15px] leading-7 text-[--text-secondary]">
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
               1. Introduction
             </h2>
 
             <p>
-              Welcome to Openleaf. Openleaf is a minimalist, browser-based
+              Welcome to HRLeaf. HRLeaf is a minimalist, browser-based
               writing and rich text editor that allows users to create and
               access documents through web URLs.
             </p>
 
             <p className="mt-4">
               This Privacy Policy explains what information may be collected,
-              how it is used, and how it is handled when you use Openleaf.
+              how it is used, and how it is handled when you use HRLeaf.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
               2. Information We Collect
             </h2>
 
             <p>
-              Openleaf is designed to work without requiring users to create
+              HRLeaf is designed to work without requiring users to create
               an account or provide personal information such as their name,
               phone number, or address.
             </p>
@@ -62,7 +65,7 @@ export default function PrivacyPage() {
 
             <ul className="mt-4 list-disc space-y-2 pl-6">
               <li>
-                Content that you voluntarily enter into an Openleaf document.
+                Content that you voluntarily enter into an HRLeaf document.
               </li>
               <li>
                 The URL or identifier associated with the document you create
@@ -77,14 +80,14 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
               3. How We Use Information
             </h2>
 
-            <p>Information processed by Openleaf may be used to:</p>
+            <p>Information processed by HRLeaf may be used to:</p>
 
             <ul className="mt-4 list-disc space-y-2 pl-6">
-              <li>Provide and operate the Openleaf editor.</li>
+              <li>Provide and operate the HRLeaf editor.</li>
               <li>Save and retrieve document content.</li>
               <li>Make documents available through their associated URLs.</li>
               <li>Maintain, troubleshoot, and improve the service.</li>
@@ -93,36 +96,12 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              4. Google Services
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              4. Document Privacy
             </h2>
 
             <p>
-              If Openleaf provides a Google sign-in or another Google
-              integration, Google may provide certain account information
-              necessary for that feature.
-            </p>
-
-            <p className="mt-4">
-              Openleaf only uses information obtained through Google services
-              for the purposes necessary to provide the requested feature.
-              Openleaf does not sell Google user data or use Google user data
-              for advertising.
-            </p>
-
-            <p className="mt-4">
-              Openleaf does not request access to Google data that is not
-              necessary for the functionality being provided.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              5. Document Privacy
-            </h2>
-
-            <p>
-              Openleaf documents are not private by default. A person who has
+              HRLeaf documents are not private by default. A person who has
               access to a document&apos;s URL may be able to view or edit its
               contents, depending on the functionality available for that
               document.
@@ -137,29 +116,29 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              6. Cookies and Local Storage
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              5. Cookies and Local Storage
             </h2>
 
             <p>
-              Openleaf may use browser storage, cookies, or similar
+              HRLeaf may use browser storage, cookies, or similar
               technologies when necessary to provide functionality, maintain
               preferences, authenticate users, or operate the service.
             </p>
 
             <p className="mt-4">
-              These technologies are not used by Openleaf to sell your
+              These technologies are not used by HRLeaf to sell your
               personal information to third parties.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              7. Data Storage and Security
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              6. Data Storage and Security
             </h2>
 
             <p>
-              Document data and other information required to operate Openleaf
+              Document data and other information required to operate HRLeaf
               may be stored on third-party infrastructure providers used by
               the service.
             </p>
@@ -173,26 +152,26 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              8. Third-Party Services
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              7. Third-Party Services
             </h2>
 
             <p>
-              Openleaf may rely on third-party providers for infrastructure,
+              HRLeaf may rely on third-party providers for infrastructure,
               hosting, authentication, database storage, analytics, or other
               services required to operate the application.
             </p>
 
             <p className="mt-4">
-              These providers may process information on behalf of Openleaf
+              These providers may process information on behalf of HRLeaf
               according to their respective privacy policies and applicable
               agreements.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              9. Data Retention and Deletion
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              8. Data Retention and Deletion
             </h2>
 
             <p>
@@ -204,18 +183,18 @@ export default function PrivacyPage() {
 
             <p className="mt-4">
               If you would like to request deletion of information associated
-              with your use of Openleaf, please contact us using the contact
+              with your use of HRLeaf, please contact us using the contact
               information provided below.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              10. Children&apos;s Privacy
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              9. Children&apos;s Privacy
             </h2>
 
             <p>
-              Openleaf is not specifically directed toward children under the
+              HRLeaf is not specifically directed toward children under the
               age of 13. We do not knowingly collect personal information from
               children under 13. If you believe that a child has provided
               personal information to the service, please contact us so that we
@@ -224,26 +203,26 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              11. Changes to This Privacy Policy
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              10. Changes to This Privacy Policy
             </h2>
 
             <p>
               We may update this Privacy Policy from time to time to reflect
-              changes to Openleaf, applicable law, or our data practices. Any
+              changes to HRLeaf, applicable law, or our data practices. Any
               changes will be published on this page with an updated revision
               date.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-neutral-900">
-              12. Contact
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              11. Contact
             </h2>
 
             <p>
               If you have questions about this Privacy Policy or would like to
-              make a privacy-related request, please contact the Openleaf
+              make a privacy-related request, please contact the HRLeaf
               project maintainer through the project&apos;s GitHub repository.
             </p>
 
@@ -252,16 +231,16 @@ export default function PrivacyPage() {
                 href="https://github.com/netlock-Gemes/hrleaf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-neutral-900 underline underline-offset-4"
+                className="font-medium text-foreground underline underline-offset-4"
               >
-                Openleaf GitHub Repository
+                HRLeaf on GitHub
               </a>
             </p>
           </section>
         </div>
 
-        <footer className="mt-16 border-t border-neutral-200 pt-8 text-sm text-neutral-500">
-          © {new Date().getFullYear()} Openleaf. All rights reserved.
+        <footer className="mt-16 border-t border-border pt-8 text-sm text-muted-foreground">
+          © {new Date().getFullYear()} HRLeaf. All rights reserved.
         </footer>
       </div>
     </main>

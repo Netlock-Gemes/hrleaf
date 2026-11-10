@@ -18,11 +18,17 @@ import {
   NodeKey,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical';
+import dynamic from 'next/dynamic';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 
 import EquationEditor from './EquationEditor';
-import EquationRenderer from './EquationRenderer';
+
+// Loaded on demand: keeps KaTeX (JS + CSS + fonts) out of the main editor bundle.
+const EquationRenderer = dynamic(() => import('./EquationRenderer'), {
+  ssr: false,
+  loading: () => <span className="equation-renderer text-[--text-tertiary]">…</span>,
+});
 
 import { $isEquationNode } from '.';
 

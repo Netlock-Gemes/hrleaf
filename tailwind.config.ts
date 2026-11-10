@@ -103,7 +103,6 @@ export default {
   			'input-focus-bg': 'var(--input-focus-bg)',
   			'input-focus-shadow': 'var(--input-focus-shadow)',
   			'input-placeholder': 'var(--input-placeholder)',
-  			'primary': 'var(--primary)',
   			'primary-10': 'var(--primary-10)',
   			'primary-20': 'var(--primary-20)',
   			'primary-50': 'var(--primary-50)',
@@ -163,7 +162,7 @@ export default {
   			'input-placeholder': 'var(--input-placeholder)'
   		},
   		caretColor: {
-  			DEFAULT: 'var(--accent)',
+  			DEFAULT: 'var(--leaf)',
   			'placeholder-text': 'var(--placeholder-text)',
   			'checkbox-border': 'var(--checkbox-border)',
   			'checkbox-checked-bg': 'var(--checkbox-checked-bg)',
@@ -172,7 +171,7 @@ export default {
   			'input-text': 'var(--input-text)'
   		},
   		outlineColor: {
-  			'accent': 'var(--accent)'
+  			'accent': 'var(--leaf)'
   		},
   		borderRadius: {
   			squircle: '24px 24px 24px 24px / 28px 28px 28px 28px',

@@ -2,160 +2,161 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * hrleaf — "Quiet paper"
+ * Warm near-black room, a slightly lifted sheet, off-white ink.
+ * Leaf green is reserved for state: caret, focus, saved, selection.
+ */
 :root {
-  /* Core palette */
-  --primary: #434757; /* Main brand/accent color */
-  --primary-rgb: 47, 133, 90; /* RGB values for opacity variants */
-  --surface-dark: #25272e; /* Main background */
-  --surface-medium: #17181b; /* Editor background */
-  --surface-light: #424857; /* Borders */
-  --text: #e6ebe8; /* Main text color */
+  color-scheme: dark;
 
-  /* Derived colors - automatically calculated from core palette */
-  --primary-10: rgba(
-    var(--primary-rgb),
-    0.1
-  ); /* Subtle highlights, hover states */
-  --primary-20: rgba(
-    var(--primary-rgb),
-    0.2
-  ); /* Selected elements, focus states */
-  --primary-50: rgba(
-    var(--primary-rgb),
-    0.5
-  ); /* Secondary buttons, progress indicators */
-  --primary-80: rgba(
-    var(--primary-rgb),
-    0.8
-  ); /* Hover state for primary elements */
+  /* Brand */
+  --leaf: #4cc47e;
+  --leaf-strong: #6fd69a;
+  --leaf-rgb: 76, 196, 126;
 
-  /* Surface variations */
-  --surface-dark-lighter: #17181b; /* A lighter shade of surface-dark */
-  --surface-dark-darker: #000000; /* A darker shade of surface-dark */
-  --surface-medium-lighter: #3a473e; /* A lighter shade of surface-medium */
-  --surface-medium-darker: #101012; /* A darker shade of surface-medium */
+  /* Surfaces (hex, used by editor CSS) */
+  --room: #121110;            /* page background */
+  --paper: #181715;           /* writing sheet */
+  --surface-dark: #1f1d1b;    /* table headers, inputs */
+  --surface-medium: #1c1a18;  /* popovers */
+  --surface-light: #34312d;   /* hairlines */
+  --surface-dark-lighter: #141312;
+  --surface-dark-darker: #0c0b0a;
+  --surface-medium-lighter: #2a2825; /* hover */
+  --surface-medium-darker: #141312;
 
-  /* Text variations for different emphasis levels */
-  --text-rgb: 230, 235, 232; /* RGB values for text opacity variants */
-  --text-secondary: rgba(
-    var(--text-rgb),
-    0.7
-  ); /* Secondary text, less emphasis */
-  --text-tertiary: rgba(
-    var(--text-rgb),
-    0.5
-  ); /* Placeholder text, disabled states */
-  --text-disabled: rgba(var(--text-rgb), 0.3); /* Very low emphasis text */
+  /* Ink */
+  --text-rgb: 236, 232, 225;
+  --text: rgb(var(--text-rgb));
+  --text-secondary: rgba(var(--text-rgb), 0.72);
+  --text-tertiary: rgba(var(--text-rgb), 0.56);
+  --text-disabled: rgba(var(--text-rgb), 0.32);
 
-  /* Link color values */
-  --text-link: #38bdf8; /* sky-400 color for links */
-  --text-link-hover: #70d3ff; /* Brighter blue on hover */
+  --primary-10: rgba(var(--leaf-rgb), 0.1);
+  --primary-20: rgba(var(--leaf-rgb), 0.2);
+  --primary-50: rgba(var(--leaf-rgb), 0.5);
+  --primary-80: rgba(var(--leaf-rgb), 0.8);
+
+  --text-link: var(--leaf-strong);
+  --text-link-hover: #9be6b9;
   --nav-link: var(--text-secondary);
-  --nav-link-hover: var(--primary); /* Hover color for navbar links */
+  --nav-link-hover: var(--text);
 
-  /* Application of core palette to specific UI elements */
-  --editor-bg: var(--surface-medium-darker);
+  --editor-bg: var(--paper);
   --editor-border: var(--surface-light);
-  --accent: var(--primary);
-  --accent-rgb: var(--primary-rgb);
 
-  /* Semantic colors for UI elements */
   --placeholder-text: var(--text-tertiary);
-  --quote-border: var(--primary);
-  --checkbox-border: var(--surface-light);
-  --checkbox-checked-bg: var(--primary);
-  --checkbox-checkmark: var(--text);
+  --quote-border: var(--surface-light);
+  --checkbox-border: rgba(var(--text-rgb), 0.35);
+  --checkbox-checked-bg: var(--leaf);
+  --checkbox-checkmark: #0f1a13;
   --code-bg: var(--surface-dark-lighter);
   --dropdown-chevron: var(--text-secondary);
 
-  /* Table colors */
   --table-border: var(--surface-light);
-  --table-cell-bg: var(--surface-medium);
+  --table-cell-bg: transparent;
   --table-header-bg: var(--surface-dark);
   --table-selected-bg: var(--primary-20);
-  --table-striping: rgba(var(--text-rgb), 0.05);
+  --table-striping: rgba(var(--text-rgb), 0.03);
 
-  /* Form input colors */
   --input-border: var(--surface-light);
   --input-text: var(--text);
   --input-bg: var(--surface-dark);
-  --input-focus-border: var(--primary);
+  --input-focus-border: var(--leaf);
   --input-focus-bg: var(--primary-10);
   --input-focus-shadow: var(--primary-20);
   --input-placeholder: var(--text-tertiary);
+
+  /* shadcn/ui tokens (HSL triplets) — single dark theme */
+  --background: 30 6% 7%;
+  --foreground: 38 22% 90%;
+  --card: 40 5% 9%;
+  --card-foreground: 38 22% 90%;
+  --popover: 30 6% 10.5%;
+  --popover-foreground: 38 22% 90%;
+  --primary: 38 22% 90%;
+  --primary-foreground: 30 6% 8%;
+  --secondary: 36 6% 13%;
+  --secondary-foreground: 38 22% 90%;
+  --muted: 36 6% 13%;
+  --muted-foreground: 37 6% 61%;
+  --accent: 36 6% 15%;
+  --accent-foreground: 38 22% 92%;
+  --destructive: 2 66% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 34 6% 17%;
+  --input: 34 6% 20%;
+  --ring: 145 50% 53%;
+  --radius: 0.625rem;
+}
+
+html {
+  background: var(--room);
 }
 
 body {
   font-family: var(--font-geist-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(var(--leaf-rgb), 0.28);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--leaf);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 @layer components {
-  /* Navbar Components */
-  .navbar {
-    @apply w-full bg-transparent;
-  }
-
-  .navbar-container {
-    @apply flex justify-start items-center mx-auto h-16 max-w-4xl max-sm:h-14;
-  }
-
-  .navbar-logo {
-    @apply flex items-center;
-  }
-
-  .navbar-links {
-    @apply flex items-center space-x-4 max-sm:space-x-3;
-  }
-
-  /* Nav link styles */
-  .nav-link {
-    @apply text-nav-link no-underline text-lg rounded transition-colors duration-200;
-  }
-
-  .nav-link:hover {
-    @apply text-nav-link-hover underline;
-  }
-
-  /* Social link styles */
-  .social-link {
-    @apply flex items-center text-nav-link transition-colors duration-200;
-  }
-
-  /* Unified hover style for all social links */
-  .social-link:hover {
-    @apply text-nav-link-hover;
-  }
-
-  /* Adjustments to ensure icons align properly with text */
-  .social-link svg {
-    @apply flex-shrink-0;
-  }
-
-  /* Base editor components */
+  /* App shell */
   .editor-main {
     @apply flex flex-col min-h-[100svh];
   }
 
   .editor-root {
-    @apply flex-grow w-full flex justify-center bg-background;
+    @apply flex-grow w-full flex justify-center px-3 sm:px-6;
   }
 
   .editor-area {
-    @apply w-full max-w-4xl flex-grow flex flex-col relative
-           bg-editor-bg shadow-lg cursor-text
-           rounded-xl mb-5 mx-3 md:mx-0 border-[0.5px] border-white/10 overflow-hidden;
+    @apply relative w-full max-w-[52rem] flex-grow flex flex-col cursor-text
+           bg-editor-bg rounded-xl mb-6 border border-white/[0.06];
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+      0 12px 32px -16px rgba(0, 0, 0, 0.6);
   }
 
   .editor-wrapper {
-    @apply h-full flex flex-col w-full px-8 py-12 mb-4 max-sm:px-6 max-sm:py-8;
+    @apply relative h-full flex flex-col w-full px-6 py-10 sm:px-14 sm:py-14;
   }
 
   .editor-input {
-    @apply flex-1 resize-none outline-none caret-accent min-h-full;
+    @apply flex-1 resize-none outline-none min-h-[60svh] text-[1.0625rem] leading-[1.75];
+    caret-color: var(--leaf);
+    color: var(--text);
+  }
+
+  .editor-input:focus-visible {
+    outline: none;
+  }
+
+  .editor-input[contenteditable="false"] {
+    @apply cursor-default;
+  }
+
+  .editor-input > p {
+    @apply my-1;
   }
 
   .editor-placeholder {
-    @apply absolute top-12 left-8 max-sm:top-8 max-sm:left-6 text-placeholder-text pointer-events-none select-none;
+    @apply absolute top-10 left-6 sm:top-14 sm:left-14 text-[1.0625rem] leading-[1.75]
+           text-placeholder-text pointer-events-none select-none;
   }
 
   .editor-link {
@@ -179,21 +180,67 @@ body {
     @apply underline;
   }
 
+  .editor-text-strikethrough {
+    @apply line-through;
+  }
+
+  .editor-text-underlineStrikethrough {
+    text-decoration: underline line-through;
+  }
+
+  /* Server-rendered copy shown before the editor mounts (and on /view pages) */
+  .editor-static {
+    @apply select-text;
+  }
+
+  .editor-static .editor-listitem-checked::before,
+  .editor-static .editor-listitem-unchecked::before,
+  .editor-static .editor-listitem-checked::after {
+    @apply cursor-default;
+  }
+
+  .format-toolbar {
+    box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    animation: toolbar-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes toolbar-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .format-toolbar {
+      animation: none;
+    }
+  }
+
+  .admin-checkbox {
+    @apply h-4 w-4 cursor-pointer rounded align-middle;
+    accent-color: var(--leaf);
+  }
+
+  .admin-checkbox:disabled {
+    @apply cursor-default opacity-40;
+  }
+
   /* Node-specific styles */
   .editor-heading-h1 {
-    @apply text-4xl font-bold mt-6 mb-4 max-sm:text-3xl max-sm:mt-4 max-sm:mb-4;
+    @apply text-[2rem] leading-[1.2] font-semibold tracking-[-0.02em] mt-8 mb-3 first:mt-0 max-sm:text-[1.75rem];
   }
 
   .editor-heading-h2 {
-    @apply text-3xl font-bold mt-5 mb-3 max-sm:text-2xl max-sm:mt-3 max-sm:mb-3;
+    @apply text-[1.5rem] leading-[1.3] font-semibold tracking-[-0.015em] mt-7 mb-2 first:mt-0;
   }
 
   .editor-heading-h3 {
-    @apply text-2xl font-bold mt-4 mb-2 max-sm:text-xl max-sm:mt-2 max-sm:mb-2;
+    @apply text-[1.2rem] leading-[1.4] font-semibold mt-6 mb-1.5 first:mt-0;
   }
 
   .editor-quote {
-    @apply border-l-4 border-quote-border pl-4 my-4 max-sm:pl-2 italic text-text-secondary rounded-r-squircle-xs;
+    @apply border-l-2 border-quote-border pl-5 my-5 max-sm:pl-3 text-text-secondary;
   }
 
   .editor-code {
@@ -430,7 +477,7 @@ body {
 
   /* Selected states */
   .editor-table-selected {
-    @apply outline-2 outline outline-accent;
+    @apply outline-2 outline outline-[--leaf];
   }
 
   .editor-table-cell-selected {
@@ -468,8 +515,8 @@ body {
   /* Add columns/rows buttons */
   .editor-table-add-columns,
   .editor-table-add-rows {
-    @apply absolute bg-accent animate-[table-controls_0.2s_ease] border-0
-          cursor-pointer hover:bg-[#424867] rounded-squircle-xs max-sm:rounded-squircle-xxs z-50;
+    @apply absolute bg-[--surface-light] animate-[table-controls_0.2s_ease] border-0
+          cursor-pointer hover:bg-[--leaf] rounded-squircle-xs max-sm:rounded-squircle-xxs z-50;
   }
 
   .editor-table-add-columns::before,
@@ -599,13 +646,13 @@ body {
 
   /* Insert button */
   .editor-table-button {
-    @apply bg-primary text-text px-2 py-1 ml-2 rounded-squircle-xs text-sm
+    @apply bg-[--leaf] text-[#0f1a13] font-medium px-2 py-1 ml-2 rounded-squircle-xs text-sm
           border-0 cursor-pointer;
     transition: background-color 0.2s ease;
   }
 
   .editor-table-button:hover {
-    @apply bg-primary;
+    @apply bg-[--leaf-strong];
   }
 
   .editor-table-button:focus {
@@ -614,7 +661,7 @@ body {
   }
 
   .editor-table-button:disabled {
-    @apply bg-primary-50 cursor-not-allowed;
+    @apply opacity-50 cursor-not-allowed;
   }
 
   /* Hide number input spinner buttons */
@@ -662,7 +709,7 @@ body {
   }
 
   .editor-horizontal-rule-selected {
-    @apply outline outline-1 outline-accent select-none;
+    @apply outline outline-1 outline-[--leaf] select-none;
   }
 
   /* Basic equation container styles - node-level */
@@ -851,71 +898,52 @@ body {
   }
 }
 
-
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-}
-
-
-
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Export PDF / print: plain black ink on white paper */
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+  :root {
+    --text-rgb: 20, 20, 20;
+    --paper: #fff;
+    --room: #fff;
+    --code-bg: #f4f4f4;
+    --surface-light: #d4d4d4;
+    --surface-dark: #f2f2f2;
+    --table-header-bg: #f2f2f2;
+    --text-link: #0b5d2a;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #141414;
+  }
+  .editor-area {
+    border: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  .editor-wrapper {
+    padding: 0 !important;
+  }
+  .editor-root {
+    padding: 0 !important;
+  }
+  .editor-input {
+    min-height: 0 !important;
+  }
+  .editor-placeholder,
+  [data-sonner-toaster],
+  nextjs-portal {
+    display: none !important;
   }
 }

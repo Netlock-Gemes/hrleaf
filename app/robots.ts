@@ -13,6 +13,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    host: 'https://openleaf.xyz',
+    host: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   };
 }

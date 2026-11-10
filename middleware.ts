@@ -1,25 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
+
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+
+const LOGIN_PATH = "/ainzooalgown/login";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = getSessionCookie(request);
+  const session = await verifySessionToken(
+    request.cookies.get(SESSION_COOKIE)?.value,
+  );
 
-  // Redirect authenticated users from /login to home
-  if (pathname === "/login" && sessionCookie) {
-    return NextResponse.redirect(new URL("/ainzooalgown", request.url));
+  if (pathname === LOGIN_PATH) {
+    return session
+      ? NextResponse.redirect(new URL("/ainzooalgown", request.url))
+      : NextResponse.next();
   }
 
-  // Protect /ainzooalgown routes for unauthenticated users
-  if (pathname.startsWith("/ainzooalgown") && !sessionCookie) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+  if (!session) {
+    return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/login", "/ainzooalgown/:path*"],
+  matcher: ["/ainzooalgown", "/ainzooalgown/:path*"],
 };

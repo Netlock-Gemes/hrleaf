@@ -1,6 +1,12 @@
+import 'katex/dist/katex.css';
+
 import katex from 'katex';
 import Image from 'next/image';
 import React, { useEffect, useRef } from 'react';
+
+import { setKatex } from './katex-cache';
+
+setKatex(katex);
 
 interface EquationRendererProps {
   equation: string;

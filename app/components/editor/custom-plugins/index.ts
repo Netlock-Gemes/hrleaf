@@ -4,3 +4,4 @@ export { EquationPlugin } from './EquationPlugin';
 export { LinksPlugin } from './LinksPlugin';
 export { TablePlugin } from './TablePlugin';
 
+export { FloatingFormatToolbarPlugin } from './FloatingFormatToolbarPlugin';

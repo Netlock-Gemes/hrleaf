@@ -1,11 +1,9 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import { redirect } from "next/navigation";
 
-import { redirect } from 'next/navigation';
+import { findAvailableSlug } from "@/server/document-service";
 
-import { getRandomAvailableSlug } from '@/server/document-actions';
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const randomSlug = await getRandomAvailableSlug();
-  redirect(`/${randomSlug}`);
+  redirect(`/${await findAvailableSlug()}`);
 }

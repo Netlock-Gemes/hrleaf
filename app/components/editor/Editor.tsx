@@ -7,7 +7,9 @@ import { ListItemNode, ListNode } from '@lexical/list';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { EditorRefPlugin } from '@lexical/react/LexicalEditorRefPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
@@ -19,23 +21,28 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { TableCellNode, TableNode, TableRowNode } from '@lexical/table';
-import { EditorState } from 'lexical';
-import { ReactElement, useState } from 'react';
+import { EditorState, LexicalEditor } from 'lexical';
+import { MutableRefObject, ReactElement, ReactNode, useEffect, useState } from 'react';
 
 import { EquationNode, InlineTableInputNode } from './custom-nodes';
 import {
   CodeHighlightPlugin,
   ComponentPickerPlugin,
   EquationPlugin,
+  FloatingFormatToolbarPlugin,
   LinksPlugin,
   TablePlugin,
 } from './custom-plugins';
-import { OPENLEAF_TRANSFORMERS } from './custom-transformers/OpenleafTransformers';
+import { HRLEAF_TRANSFORMERS } from './custom-transformers/HRLeafTransformers';
 import DefaultTheme from './themes/DefaultTheme';
 
 interface EditorProps {
   initialContent: string | null;
+  editable?: boolean;
   onEditorStateChange: (editorState: EditorState) => void;
+  editorRef?: MutableRefObject<LexicalEditor | null>;
+  /** Server-rendered copy of the content, shown until the editor has mounted. */
+  preview?: ReactNode;
 }
 
 const theme = DefaultTheme;
@@ -46,8 +53,16 @@ function onError(error: Error) {
 
 export default function Editor({
   initialContent,
+  editable = true,
   onEditorStateChange,
+  editorRef,
+  preview,
 }: EditorProps): ReactElement {
+  // Instant first paint: show static HTML until Lexical has rendered the real thing.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const showPreview = !mounted && !!preview;
+
   // Create a ref for the floating anchor element
   const [floatingAnchorElem, setFloatingAnchorElem] =
     useState<HTMLDivElement | null>(null);
@@ -60,7 +75,7 @@ export default function Editor({
   };
 
   const editorConfig = {
-    namespace: 'openleaf-editor',
+    namespace: 'hrleaf-editor',
     theme,
     onError,
     nodes: [
@@ -80,6 +95,7 @@ export default function Editor({
       EquationNode,
     ],
     editorState: initialContent,
+    editable,
   };
 
   return (
@@ -89,22 +105,37 @@ export default function Editor({
           <RichTextPlugin
             contentEditable={
               <div ref={onRef} className="editor-wrapper">
-                <ContentEditable className="editor-input" aria-label="Text editor content" role="textbox" />
+                {showPreview ? (
+                  <div className="editor-input editor-static" aria-hidden>
+                    {preview}
+                  </div>
+                ) : null}
+                <ContentEditable
+                  className={`editor-input${showPreview ? ' hidden' : ''}`}
+                  aria-label="Document text"
+                  role="textbox"
+                  suppressHydrationWarning
+                />
               </div>
             }
             placeholder={
-              <div className="editor-placeholder">Scribble away...</div>
+              showPreview ? null : <div className="editor-placeholder">
+                {editable ? 'Start writing. Type / for blocks, or use markdown.' : 'This document is empty.'}
+              </div>
             }
             ErrorBoundary={LexicalErrorBoundary}
           />
+          <EditablePlugin editable={editable} />
+          {editorRef ? <EditorRefPlugin editorRef={editorRef} /> : null}
+          <FloatingFormatToolbarPlugin />
           <HistoryPlugin />
-          {!initialContent && <AutoFocusPlugin />}
+          {!initialContent && editable && <AutoFocusPlugin />}
           <ListPlugin />
           <ComponentPickerPlugin />
           <CheckListPlugin />
           <CodeHighlightPlugin />
           <TabIndentationPlugin maxIndent={7} />
-          <MarkdownShortcutPlugin transformers={OPENLEAF_TRANSFORMERS} />
+          <MarkdownShortcutPlugin transformers={HRLEAF_TRANSFORMERS} />
           <HorizontalRulePlugin />
           <OnChangePlugin
             onChange={onEditorStateChange}
@@ -117,4 +148,13 @@ export default function Editor({
       </LexicalComposer>
     </div>
   );
+}
+
+/** Keeps Lexical's editable flag in sync when a document gets locked mid-session. */
+function EditablePlugin({ editable }: { editable: boolean }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    editor.setEditable(editable);
+  }, [editor, editable]);
+  return null;
 }

@@ -1,9 +1,9 @@
 
-import katex from 'katex';
 import { $applyNodeReplacement, DecoratorNode, DOMExportOutput } from 'lexical';
 import { ReactElement } from 'react';
 
 import EquationComponent from './EquationComponent';
+import { decodeEquation, encodeEquation, getKatex } from './katex-cache';
 
 import type {
   DOMConversionMap,
@@ -31,7 +31,7 @@ function $convertEquationElement(
   const inline = domNode.getAttribute('data-lexical-inline') === 'true';
   const startInEditMode = domNode.getAttribute('data-lexical-start-edit') === 'true';
   // Decode the equation from base64
-  equation = atob(equation || '');
+  equation = decodeEquation(equation || '');
   if (equation) {
     const node = $createEquationNode(equation, inline, startInEditMode);
     return {node};
@@ -88,18 +88,23 @@ export class EquationNode extends DecoratorNode<ReactElement> {
   exportDOM(): DOMExportOutput {
     const element = document.createElement(this.__inline ? 'span' : 'div');
     // Encode the equation as base64 to avoid issues with special characters
-    const equation = btoa(this.__equation);
+    const equation = encodeEquation(this.__equation);
     element.setAttribute('data-lexical-equation', equation);
     element.setAttribute('data-lexical-inline', `${this.__inline}`);
     element.setAttribute('data-lexical-start-edit', `${this.__startInEditMode}`);
-    katex.render(this.__equation, element, {
-      displayMode: !this.__inline,
-      errorColor: '#cc0000',
-      output: 'html',
-      strict: 'warn',
-      throwOnError: false,
-      trust: false,
-    });
+    const katex = getKatex();
+    if (katex) {
+      katex.render(this.__equation, element, {
+        displayMode: !this.__inline,
+        errorColor: '#cc0000',
+        output: 'html',
+        strict: 'warn',
+        throwOnError: false,
+        trust: false,
+      });
+    } else {
+      element.textContent = this.__inline ? `$${this.__equation}$` : `$$${this.__equation}$$`;
+    }
     return {element};
   }
 

@@ -1,99 +1,46 @@
-# Contributing to openleaf
+# Contributing to HRLeaf
 
-Thanks for your interest in contributing to openleaf!
-
-## Quick Start
+## Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/AashishRichhariya/openleaf.git
-
-# Navigate to the project directory
-cd openleaf
-
-# Install dependencies
-pnpm install
-
-# Run the development server
-pnpm dev
+npm install
+cp .env.example .env   # fill in MongoDB and admin values
+npm run dev
 ```
 
-The application will be running at `http://localhost:3000`
+## Before opening a PR
 
-## How to Contribute
-
-### Reporting Bugs
-
-When reporting bugs:
-
-- Check existing issues first to avoid duplicates
-- Use a clear title and description
-- Include steps to reproduce
-- Mention your browser and OS
-- Include screenshots or screen recordings when relevant
-
-### Suggesting Features
-
-For feature requests:
-
-- Explain why the feature would be useful
-- Keep it aligned with openleaf's philosophy
-- Consider providing mockups or examples
-
-### Branch Naming & Pull Requests
-
-1. Fork the repository
-2. Create a new branch following our naming convention:
-   - All lowercase with hyphens between words
-   - For features: `feature/short-description` (e.g., `feature/code-blocks`)
-   - For bugfixes: `bugfix/short-description` (e.g., `bugfix/table-alignment`)
-   - For documentation: `docs/short-description` (e.g., `docs/api-reference`)
-   - For maintenance tasks: `chore/short-description` (e.g., `chore/update-dependencies`)
-   - For refactoring: `refactor/short-description` (e.g., `refactor/editor-state`)
-   - For testing: `test/short-description` (e.g., `test/table-rendering`)
-   - For style changes: `style/short-description` (e.g., `style/button-colors`)
-3. Make your changes
-4. Submit a PR to the `develop` branch (not directly to `main`)
-
-## Code Guidelines
-
-### Commit Messages
-
-- Use present tense and imperative mood
-- Keep the first line short (< 72 characters)
-- Format: `type(scope): description` (e.g., `feat(editor): add code block support`)
-
-### Code Style
-
-- We use TypeScript for type safety
-- Follow the existing patterns in the codebase
-- Use ESLint and Prettier for formatting (configs are in the repo)
-- For CSS, use Tailwind utility classes when possible
-
-## Project Structure
-
-```
-openleaf/
-├── app/                  # Next.js app directory
-│   ├── [slug]/           # Dynamic routes
-│   ├── components/       # React components
-│   │   ├── editor/       # Editor components
-│   │   ├── analytics/    # Analytics components
-│   │   └── social-links/ # Social link components
-│   ├── hooks/            # Custom React hooks
-│   └── utils/            # Utility functions
-├── server/               # Server-side code
-├── public/               # Static assets
-└── types/                # TypeScript types
+```bash
+npx tsc --noEmit
+npm run lint
+npm run build
 ```
 
-## Technologies
+## Project layout
 
-- [Lexical](https://lexical.dev/) - Text editor framework
-- [Next.js](https://nextjs.org/) - React framework
-- [Tailwind CSS](https://tailwindcss.com/) - For styling
-- [DynamoDB](https://aws.amazon.com/dynamodb/) - For storage
+```
+app/
+  (main)/            public pages: random-note redirect, /[slug] editor, /[slug]/view, /privacy
+  ainzooalgown/      admin login + dashboard
+  components/
+    editor/          Lexical editor, plugins, nodes, transformers
+    SiteHeader.tsx
+components/ui/       shadcn/ui primitives
+lib/
+  session.ts         signed admin cookie (works in middleware and server code)
+  static-render.tsx  server-side Lexical JSON -> HTML
+  recent.ts          per-browser recent notes and preferences
+server/
+  document-actions.ts  the only public server actions (save, restore)
+  admin-actions.ts     admin-only server actions (all call requireAdmin)
+  document-service.ts  server-only database access
+  mongo-config.ts      shared connection, indexes, backfill
+middleware.ts        protects /ainzooalgown
+```
 
----
+## Rules of thumb
 
-Happy contributing! 🌱
+- Anything in a `"use server"` file is callable from the browser. Keep database helpers in `server-only` modules and expose only what's needed.
+- Every admin server action must call `requireAdmin()`.
+- Lists must never load note `content`; use the stored `preview`, `size` and `is_empty` fields.
+- Keep the UI on the existing tokens in `app/globals.css`; leaf green is for state (save, focus, selection), not decoration.

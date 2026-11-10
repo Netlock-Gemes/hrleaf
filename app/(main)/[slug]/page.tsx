@@ -1,39 +1,39 @@
-import { Metadata } from 'next';
+import { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 
-import { fetchDocument } from '@/server/document-actions';
+import { renderDocumentStatic } from "@/lib/static-render";
+import { getEditorDocument } from "@/server/document-service";
+import { normaliseSlug } from "@/server/document-utils";
 
-import EditorContainer from '../../components/editor/EditorContainer';
+import EditorContainer from "../../components/editor/EditorContainer";
 
-interface EditorPageProps {
-  params: Promise<{ slug: string }>;
-}
+export const dynamic = "force-dynamic";
 
-type MetadataProps = {
-  params: Promise<{ slug: string }>;
-}
+type Props = { params: Promise<{ slug: string }> };
 
-export async function generateMetadata(
-  { params }: MetadataProps,
-): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  
-  return {
-    title: `hrleaf | ${slug}`,
-  };
+  return { title: `${normaliseSlug(slug) ?? slug} · HRLeaf` };
 }
 
-export default async function EditorPage(props: EditorPageProps) {
-  const { slug } = await props.params;
-  const document = await fetchDocument(slug.toLowerCase());
-  const pageContent = document?.content
-    ? JSON.stringify(document.content)
-    : null;
+export default async function EditorPage({ params }: Props) {
+  const { slug: raw } = await params;
+  const slug = normaliseSlug(raw);
+  if (!slug) notFound();
+  if (slug !== raw) redirect(`/${slug}`);
+
+  const doc = await getEditorDocument(slug);
 
   return (
     <EditorContainer
+      // Remount when navigating between documents so editor state never leaks across.
+      key={slug}
       slug={slug}
-      initialContent={pageContent}
-      isReadOnly={document?.read_only ?? false}
+      initialContent={doc?.content ? JSON.stringify(doc.content) : null}
+      isReadOnly={doc?.read_only ?? false}
+      updatedAt={doc?.updated_at ?? null}
+      previousUpdatedAt={doc?.previous_updated_at ?? null}
+      preview={renderDocumentStatic(doc?.content)}
     />
   );
 }

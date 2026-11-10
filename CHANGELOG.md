@@ -1,78 +1,38 @@
 # Changelog
 
-All notable changes to openleaf will be documented in this file.
+All notable changes to HRLeaf are documented here.
 
-## [0.3.0] - 2025-05-19
+## [1.0.0] - 2026-11-10
+
+First HRLeaf release.
 
 ### Added
 
-- Code component with syntax highlighting and line numbers
-- LaTeX equation support (inline and block) with KaTeX integration
-- Triple backtick code block trigger (```)
-- Horizontal divider component via component picker and markdown syntax
-- SVG icons component and dedicated icons folder
-- Keyboard shortcuts in command menu
+- Manual saving with a Save button that's enabled only when there are changes, plus `Ctrl/⌘ + S`
+- Unsaved-change markers (note name dot, tab title) and a save / discard / stay prompt on leaving
+- Restore previous version (one version kept; restoring is reversible)
+- Conflict detection when a note was saved elsewhere since it was opened
+- Floating formatting toolbar on text selection, including links
+- Share menu with read-only links and a server-rendered `/note/view` page
+- Download as Markdown and Export PDF (print layout)
+- Focus mode and per-browser recent notes
+- Admin dashboard: server-side search/filter/sort/paging, previews, activity chart, largest notes, rename, restore, bulk lock/unlock/delete, delete all empty notes
+- Single admin account configured in `.env`
 
 ### Changed
 
-- Improved dropdown UI with borders, icons and shortcut commands
-- Enhanced text formatting for bold, italic, underline, and inline-code
-- Upgraded Lexical packages and removed custom link transformer
-- Improved mobile UI margins and sizes
+- New "Quiet paper" interface
+- Notes render on the server for instant first paint
+- KaTeX is loaded only when a note contains an equation
+- Faster database access: shared connection, indexes, and stored previews so lists never load note bodies
+
+### Removed
+
+- Google sign-in, better-auth and Prisma
 
 ### Fixed
 
-- Table component improvements:
-  - Fixed row/column hover button positioning
-  - Fixed vertical rendering of menu action buttons
-  - Combined table plugins into a single custom plugin
-  - Fixed scrolling to page top on clearTableSelection
-- Fixed editor placeholder positioning in smaller screens
-- Fixed typeahead popover rendering on scrolled windows
-- Fixed server not saving empty nodes
-- Fixed equation alignments and overflow
-- Fixed number lines height in code blocks
-
-## [0.2.0] - 2025-04-26
-
-### Added
-
-- Link support with multiple creation methods:
-  - Markdown syntax `[text](url)`
-  - Automatic URL detection
-  - Convert selected text to link by pasting URL
-- Checklist markdown support (type `[]` or `[x]` followed by space)
-- Social and GitHub icons with correct links
-- Contributing guidelines (CONTRIBUTING.md)
-
-### Changed
-
-- Improved UI with better color contrast
-- Updated automatic URL creation for more user-friendly and readable links
-- Renamed backend code's folder from 'libs' to 'server' for better organization
-- Updated README with more detailed information
-
-### Performance
-
-- Optimized asset delivery by reducing key image size from 20KB to 1.5KB after compression
-- Improved bundle size through tree shaking and removal of unnecessary dependencies
-- Switched from Vercel analytics to Umami analytics for smaller footprint and improved page load times
-
-### Accessibility
-
-- Added ARIA labels to improve screen reader compatibility
-
-## [0.1.0] - Initial Release
-
-### Features
-
-- Minimalist browser-based editor with instant access via URL
-- Auto-saving content as you type
-- Markdown shortcuts support:
-  - Headings (3 levels)
-  - Bullet points
-  - Numbered lists
-  - Blockquotes
-- Command menu (access via '/')
-- Table creation via command menu or `/NxM` shortcut
-- Basic project documentation
+- Locked notes could be overwritten through a public server function
+- Strikethrough text wasn't styled
+- Equations with non-Latin characters broke copy/export
+- Empty notes were created just by opening a page
