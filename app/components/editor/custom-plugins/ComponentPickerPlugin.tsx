@@ -154,14 +154,14 @@ function ComponentPickerMenuItem({
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function setBlock(editor: LexicalEditor, create: () => ReturnType<typeof $createParagraphNode> | ReturnType<typeof $createHeadingNode> | ReturnType<typeof $createQuoteNode>) {
+export function setBlock(editor: LexicalEditor, create: () => ReturnType<typeof $createParagraphNode> | ReturnType<typeof $createHeadingNode> | ReturnType<typeof $createQuoteNode>) {
   editor.update(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) $setBlocksType(selection, create);
   });
 }
 
-function insertCode(editor: LexicalEditor, language?: string) {
+export function insertCode(editor: LexicalEditor, language?: string) {
   editor.update(() => {
     const selection = $getSelection();
     if (!$isRangeSelection(selection)) return;
@@ -199,7 +199,7 @@ function clearFormatting(editor: LexicalEditor) {
   });
 }
 
-function insertText(editor: LexicalEditor, text: string) {
+export function insertText(editor: LexicalEditor, text: string) {
   editor.update(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) selection.insertText(text);

@@ -68,6 +68,10 @@ Press `/` for blocks, grouped into Basic, Lists, Insert, Code, Math and Format. 
 
 Inside a callout or toggle, press Enter on an empty last line to step out below it.
 
+### Block panel
+
+On wide screens (1200px and up) a small panel beside the sheet holds the same blocks in four groups: Text, Lists, Blocks and Insert. The block your cursor is in is highlighted; click a highlighted style again to turn it back into a paragraph. The line at the bottom names the option you're pointing at and its shortcut. On phones and narrow windows, use `/`.
+
 ### Command palette (`Ctrl/⌘ + K`)
 
 Search every note you can open (best match first, with **Create** as the fallback), jump to a heading in the open note, or run commands: new note, save, download Markdown, export PDF, focus mode, copy link, share settings (admin), switch theme, sign out. It also opens from the search button in the header or the account menu.

@@ -33,6 +33,7 @@ import {
   ToggleTitleNode,
 } from './custom-nodes';
 import {
+  BlockRailPlugin,
   BlocksPlugin,
   CodeHighlightPlugin,
   ComponentPickerPlugin,
@@ -54,6 +55,8 @@ interface EditorProps {
   preview?: ReactNode;
   /** Ruled header fields across the top of the sheet. */
   header?: ReactNode;
+  /** Hide the left block toolbar (focus mode while typing). */
+  railHidden?: boolean;
 }
 
 const theme = DefaultTheme;
@@ -69,6 +72,7 @@ export default function Editor({
   editorRef,
   preview,
   header,
+  railHidden = false,
 }: EditorProps): ReactElement {
   // Instant first paint: show static HTML until Lexical has rendered the real thing.
   const [mounted, setMounted] = useState(false);
@@ -162,6 +166,7 @@ export default function Editor({
           <TablePlugin anchorElem={floatingAnchorElem} />
           <EquationPlugin />
           <BlocksPlugin />
+          <BlockRailPlugin hidden={railHidden} />
           {editable ? <NoteLinkPlugin /> : null}
         </div>
       </LexicalComposer>

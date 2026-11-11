@@ -1646,3 +1646,91 @@ body {
     }
   }
 }
+
+/* Left block panel: the "/" menu's blocks in labelled groups, beside the sheet on wide screens only. */
+.block-rail {
+  display: none;
+}
+@media (min-width: 1200px) {
+  .block-rail {
+    position: fixed;
+    top: 6.5rem;
+    right: calc(50% + 26rem + 1.25rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 9.25rem;
+    padding: 0.5rem;
+    border: 1px solid var(--hairline);
+    border-radius: 0.625rem;
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-panel);
+    z-index: 30;
+    transition: opacity 200ms ease-out;
+  }
+}
+.block-rail-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.block-rail-group + .block-rail-group {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--hairline);
+}
+.block-rail-title {
+  margin: 0 0 0.375rem 0.25rem;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pad-label);
+}
+.block-rail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+.block-rail-btn {
+  position: relative;
+  display: flex;
+  height: 2.25rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  color: var(--text-tertiary);
+  transition: color 150ms ease-out, background-color 150ms ease-out;
+}
+.block-rail-btn:hover {
+  background: var(--row-active);
+  color: var(--text);
+}
+.block-rail-btn:focus-visible {
+  outline: 2px solid var(--leaf);
+  outline-offset: 1px;
+}
+.block-rail-btn[aria-pressed="true"] {
+  background: rgba(var(--leaf-rgb), 0.14);
+  color: var(--leaf-strong);
+}
+/* Status line: names the hovered button and its shortcut, or the block the cursor is in. */
+.block-rail-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
+  min-height: 1.75rem;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.25rem 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 11.5px;
+  line-height: 1.2;
+  color: var(--text-secondary);
+}
+@media print {
+  .block-rail {
+    display: none !important;
+  }
+}

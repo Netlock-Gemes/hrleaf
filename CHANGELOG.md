@@ -12,6 +12,7 @@ A new sheet design, better tables and more blocks.
 - Wide tables keep readable columns and scroll sideways inside the page, with a fade on the edge that has more; long text wraps within its column. Works in the editor, read-only pages and share links
 - `/` menu grouped into sections, with Heading 4, Callout (Note, Tip, Warning, Important), Toggle (collapsible section), Link to note, Today's date, Current time, code blocks in a chosen language, Indent, Outdent and Clear formatting
 - `[[` links another note by name
+- Block panel beside the sheet on wide screens (1200px and up): Text, Lists, Blocks and Insert groups with the current block highlighted; clicking an active style turns it back into a paragraph; a status line names the hovered option and its shortcut
 - Markdown export writes callouts as `> [!NOTE]` alerts and toggles as `<details>`
 
 ### Fixed

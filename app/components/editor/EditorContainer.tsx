@@ -850,6 +850,7 @@ export default function EditorContainer({
         editable={!locked}
         onEditorStateChange={handleEditorStateChange}
         preview={preview}
+        railHidden={headerHidden}
         header={
           <NoteFields
             name={slug}

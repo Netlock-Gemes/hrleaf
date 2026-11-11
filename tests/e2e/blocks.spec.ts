@@ -151,3 +151,37 @@ test("[[ links another note", async () => {
   await page.keyboard.press("Enter");
   await expect(page.locator(`.editor-input a[href="/${WIDE}"]`)).toHaveText(WIDE);
 });
+
+test("left toolbar shows the current block and switches block types", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`/${PREFIX}rail`);
+  await page.waitForLoadState("networkidle");
+  await editor(page).click();
+  await page.keyboard.type("Rail heading");
+
+  const rail = page.getByRole("navigation", { name: "Blocks" });
+  await expect(rail).toBeVisible();
+  await expect(rail.getByRole("button", { name: "Paragraph" })).toHaveAttribute("aria-pressed", "true");
+
+  await rail.getByRole("button", { name: "Heading 2" }).click();
+  await expect(page.locator(".editor-input h2")).toHaveText("Rail heading");
+  await expect(rail.getByRole("button", { name: "Heading 2" })).toHaveAttribute("aria-pressed", "true");
+
+  // Clicking the active style again goes back to a paragraph, like Word.
+  await rail.getByRole("button", { name: "Heading 2" }).click();
+  await expect(page.locator(".editor-input h2")).toHaveCount(0);
+
+  await rail.getByRole("button", { name: "Bulleted list" }).click();
+  await expect(page.locator(".editor-input ul li")).toHaveText("Rail heading");
+  await rail.getByRole("button", { name: "Bulleted list" }).click();
+  await expect(page.locator(".editor-input ul")).toHaveCount(0);
+
+  await rail.getByRole("button", { name: "Callout" }).click();
+  await expect(page.locator(".editor-input .editor-callout")).toHaveCount(1);
+  await expect(rail.getByRole("button", { name: "Callout" })).toHaveAttribute("aria-pressed", "true");
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/rail.png` });
+
+  // Narrow screens keep the / menu instead.
+  await page.setViewportSize({ width: 900, height: 900 });
+  await expect(rail).toBeHidden();
+});
