@@ -1734,3 +1734,65 @@ body {
     display: none !important;
   }
 }
+
+/* Phones: a slightly smaller sheet. Body stays at 16px so iOS doesn't zoom while typing. */
+@media (max-width: 639px) {
+  .editor-area {
+    --fields-h: 3.1rem;
+  }
+  .editor-wrapper {
+    padding: 1.75rem 1.25rem 2rem;
+  }
+  .editor-input,
+  .editor-placeholder {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+  .editor-placeholder {
+    top: calc(var(--fields-h) + 1.75rem);
+    left: 1.25rem;
+  }
+  .editor-heading-h1 {
+    font-size: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .editor-heading-h2 {
+    font-size: 1.25rem;
+    margin-top: 1.25rem;
+  }
+  .editor-heading-h3 {
+    font-size: 1.075rem;
+    margin-top: 1rem;
+  }
+  .editor-heading-h4 {
+    font-size: 0.75rem;
+  }
+  .editor-table-cell {
+    min-width: 6.5rem;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .editor-table-cell > * {
+    max-width: 16rem;
+  }
+  .editor-table tr:first-of-type > .editor-table-cell-header {
+    font-size: 0.66rem;
+  }
+  .editor-callout {
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+  }
+  .editor-code {
+    font-size: 0.8rem;
+  }
+  .editor-listitem {
+    margin-inline: 1.5rem;
+  }
+  .pad-label {
+    font-size: 9.5px;
+  }
+  .pad-value {
+    font-size: 12.5px;
+  }
+}

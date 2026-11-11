@@ -17,6 +17,7 @@ A new sheet design, better tables and more blocks.
 
 ### Fixed
 
+- On phones the sheet's text, headings, tables and callouts were a size too large; they now scale down (body stays at 16px so iOS doesn't zoom while typing)
 - After picking from the `/` menu, an invisible box stayed where the command was typed and blocked clicks there
 - The table cell menu now follows its cell when a table scrolls sideways, and the "add row" button sits below the scrollbar
 
