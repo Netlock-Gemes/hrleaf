@@ -3,7 +3,7 @@
 export const SITE_NAME = "HRLeaf";
 
 export const SITE_DESCRIPTION =
-  "A private notebook. Every note lives at its own link and is shared only with the people you send it to.";
+  "A private notebook for a small team. Notes open only for invited accounts, or through a link you choose to share.";
 
 /** Absolute base URL for metadata (OG images need absolute links). */
 export function siteUrl(): URL {

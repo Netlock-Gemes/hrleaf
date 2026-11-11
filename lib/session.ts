@@ -1,14 +1,26 @@
 /**
- * Minimal signed-cookie session for the single admin account.
- * Uses Web Crypto only, so it runs in both the Edge middleware and Node server code.
+ * Signed-cookie sessions for the admin and members.
+ * Uses Web Crypto only, so it runs anywhere (Node or Edge).
  *
  * Token format: base64url(payloadJson).base64url(hmacSha256(payload))
+ *
+ * The signature proves the cookie came from us. Members are also checked against
+ * the database on every request (see server/auth.ts), so disabling a member or
+ * resetting their password signs them out immediately.
  */
 
-export const SESSION_COOKIE = "hrleaf_admin";
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days, in seconds
+export const SESSION_COOKIE = "hrleaf_session";
+export const ADMIN_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+export const MEMBER_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
-type SessionPayload = { sub: string; exp: number };
+export type SessionPayload = {
+  /** "admin:<ADMIN_USERNAME>" for the admin, the user id for members. */
+  sub: string;
+  role: "admin" | "member";
+  /** Members: must match users.session_version. */
+  ver: number;
+  exp: number;
+};
 
 const encoder = new TextEncoder();
 
@@ -41,18 +53,19 @@ function getKey(): Promise<CryptoKey> {
   return keyPromise;
 }
 
-export async function createSessionToken(username: string): Promise<string> {
-  const payload: SessionPayload = {
-    sub: username,
-    exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE,
-  };
+export const adminSubject = () => `admin:${process.env.ADMIN_USERNAME ?? ""}`;
+
+export async function createSessionToken(
+  data: Omit<SessionPayload, "exp">,
+  maxAge: number,
+): Promise<string> {
+  const payload: SessionPayload = { ...data, exp: Math.floor(Date.now() / 1000) + maxAge };
   const body = toBase64Url(encoder.encode(JSON.stringify(payload)));
-  const sig = new Uint8Array(
-    await crypto.subtle.sign("HMAC", await getKey(), encoder.encode(body)),
-  );
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", await getKey(), encoder.encode(body)));
   return `${body}.${toBase64Url(sig)}`;
 }
 
+/** Checks signature and expiry only. */
 export async function verifySessionToken(
   token: string | undefined | null,
 ): Promise<SessionPayload | null> {
@@ -61,23 +74,19 @@ export async function verifySessionToken(
   if (!body || !sig) return null;
 
   try {
-    const valid = await crypto.subtle.verify(
-      "HMAC",
-      await getKey(),
-      fromBase64Url(sig),
-      encoder.encode(body),
-    );
+    const valid = await crypto.subtle.verify("HMAC", await getKey(), fromBase64Url(sig), encoder.encode(body));
     if (!valid) return null;
 
-    const payload = JSON.parse(
-      new TextDecoder().decode(fromBase64Url(body)),
-    ) as SessionPayload;
-    if (typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) {
-      return null;
+    const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as SessionPayload;
+    if (typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) return null;
+    if (payload.role === "admin") {
+      // An admin session only counts for the admin currently configured in .env.
+      return payload.sub === adminSubject() ? payload : null;
     }
-    // A session only counts for the admin currently configured in .env.
-    if (payload.sub !== process.env.ADMIN_USERNAME) return null;
-    return payload;
+    if (payload.role === "member" && typeof payload.sub === "string" && typeof payload.ver === "number") {
+      return payload;
+    }
+    return null;
   } catch {
     return null;
   }

@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
 import SiteHeader from "@/app/components/SiteHeader";
+import UserMenu from "@/app/components/UserMenu";
+import { getViewer } from "@/server/auth";
 
 export const metadata = {
   title: "Privacy Policy",
@@ -13,11 +15,24 @@ export const metadata = {
   },
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const viewer = await getViewer();
   return (
     <main className="min-h-screen">
       <SiteHeader>
-        <NewNoteButton />
+        {viewer ? (
+          <>
+            <NewNoteButton />
+            <UserMenu viewer={viewer} className="ml-0.5" />
+          </>
+        ) : (
+          <Link
+            href="/login"
+            className="flex h-8 items-center rounded-md px-2.5 text-[13px] text-[--text-secondary] transition-colors hover:bg-accent hover:text-foreground"
+          >
+            Sign in
+          </Link>
+        )}
       </SiteHeader>
       <div className="mx-auto max-w-[44rem] px-5 py-12 sm:px-8 lg:py-20">
         <header className="mb-12">
@@ -33,7 +48,7 @@ export default function PrivacyPage() {
           </h1>
 
           <p className="tabular mt-3 text-sm text-muted-foreground">
-            Last updated: September 25, 2026
+            Last updated: November 11, 2026
           </p>
         </header>
 
@@ -61,9 +76,10 @@ export default function PrivacyPage() {
             </h2>
 
             <p>
-              HRLeaf is designed to work without requiring users to create
-              an account or provide personal information such as their name,
-              phone number, or address.
+              HRLeaf is a private, invitation-only notebook. Accounts are
+              created by the administrator and hold only a username, a display
+              name and a securely hashed password. HRLeaf does not ask for
+              personal information such as your email, phone number or address.
             </p>
 
             <p className="mt-4">
@@ -109,17 +125,19 @@ export default function PrivacyPage() {
             </h2>
 
             <p>
-              HRLeaf documents are not private by default. A person who has
-              access to a document&apos;s URL may be able to view or edit its
-              contents, depending on the functionality available for that
-              document.
+              Notes are private by default and can only be opened by signed-in
+              accounts. The administrator can make a note visible to themselves
+              only, or turn on a public share link. Anyone who has a share link
+              can read that one note, or edit it if the link allows editing,
+              without an account. The administrator can turn a link off or
+              replace it at any time.
             </p>
 
             <p className="mt-4">
-              Users should therefore avoid storing passwords, financial
-              information, confidential business information, sensitive
-              personal information, or other information that they do not want
-              to be accessible through a shared or discoverable URL.
+              Because share links work for anyone who has them, avoid putting
+              passwords, financial information, confidential business
+              information or other sensitive details in a note that has a
+              public share link.
             </p>
           </section>
 

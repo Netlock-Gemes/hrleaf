@@ -143,17 +143,17 @@ function Address({ slug, suffix }: { slug: string; suffix?: string }) {
   );
 }
 
-export async function noteImage(opts: { slug: string; meta: string[]; view?: boolean }) {
+export async function noteImage(opts: { slug: string; meta: string[]; shared?: boolean }) {
   return new ImageResponse(
     (
       <Frame>
         <Brand />
         <div style={{ display: "flex", flexDirection: "column", gap: 30 }}>
-          <Address slug={opts.slug} suffix={opts.view ? "/view" : undefined} />
+          <Address slug={opts.slug} />
           <Meta items={opts.meta} />
         </div>
         <div style={{ display: "flex", fontSize: 24, color: C.faint }}>
-          {opts.view ? "Read-only view · private note" : "Private note"}
+          {opts.shared ? "Shared with you" : "Private note"}
         </div>
       </Frame>
     ),

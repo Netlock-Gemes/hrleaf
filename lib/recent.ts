@@ -50,3 +50,49 @@ export function writePref(key: string, value: boolean) {
     /* ignore */
   }
 }
+
+/* --------------------------------- drafts --------------------------------- */
+
+/**
+ * Unsaved changes kept in this browser, so a crash or a closed tab doesn't lose work.
+ * Keyed by note ("note:<slug>") or share link ("share:<token>").
+ */
+export type Draft = { content: string; base: string | null; at: number };
+
+const draftKey = (key: string) => `hrleaf:draft:${key}`;
+
+export function readDraft(key: string): Draft | null {
+  try {
+    const d = JSON.parse(localStorage.getItem(draftKey(key)) ?? "null");
+    return d && typeof d.content === "string" && typeof d.at === "number" ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeDraft(key: string, draft: Draft) {
+  try {
+    localStorage.setItem(draftKey(key), JSON.stringify(draft));
+  } catch {
+    /* storage full or blocked: drafts are best-effort */
+  }
+}
+
+export function clearDraft(key: string) {
+  try {
+    localStorage.removeItem(draftKey(key));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** On sign-out: forget recent notes and drafts on this device. Keeps display preferences. */
+export function clearLocalNotes() {
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (k === KEY || k.startsWith("hrleaf:draft:")) localStorage.removeItem(k);
+    }
+  } catch {
+    /* ignore */
+  }
+}

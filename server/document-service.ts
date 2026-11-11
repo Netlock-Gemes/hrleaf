@@ -1,19 +1,26 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
+
 import { Filter } from "mongodb";
 import { cache } from "react";
 
 import {
+  AdminFilter,
   AdminListResult,
   AdminQuery,
   AdminStats,
   Document,
   DocumentSummary,
   EditorDocument,
+  ShareMode,
+  StorageInfo,
+  Viewer,
+  Visibility,
 } from "@/types";
 
-import { countWords, derivedFields, escapeRegex, generateRandomSlug } from "./document-utils";
-import { documents } from "./mongo-config";
+import { SHARE_TOKEN_PATTERN, countWords, derivedFields, escapeRegex, generateRandomSlug } from "./document-utils";
+import { connectToMongo, documents } from "./mongo-config";
 
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024; // 2 MB of editor JSON
 export const ADMIN_PAGE_SIZE = 50;
@@ -22,37 +29,63 @@ export const ADMIN_PAGE_SIZE = 50;
 /* Reading                                                             */
 /* ------------------------------------------------------------------ */
 
+const EDITOR_PROJECTION = {
+  _id: 0,
+  slug: 1,
+  content: 1,
+  read_only: 1,
+  updated_at: 1,
+  updated_by: 1,
+  previous_updated_at: 1,
+  visibility: 1,
+  share: 1,
+  deleted_at: 1,
+} as const;
+
+function toEditorDocument(doc: Partial<Document> & { slug: string }): EditorDocument {
+  return {
+    slug: doc.slug,
+    content: doc.content ?? null,
+    read_only: doc.read_only === true,
+    updated_at: doc.updated_at ?? null,
+    updated_by: doc.updated_by ?? null,
+    previous_updated_at: doc.previous_updated_at ?? null,
+    visibility: doc.visibility === "private" ? "private" : "team",
+    share: doc.share?.token ? doc.share : null,
+    deleted: !!doc.deleted_at,
+  };
+}
+
 /** Wrapped in React cache so metadata + page share one query per request. */
-export const getEditorDocument = cache(
-  async (slug: string): Promise<EditorDocument | null> => {
-    const col = await documents();
-    const doc = await col.findOne(
-      { slug },
-      {
-        projection: {
-          _id: 0,
-          slug: 1,
-          content: 1,
-          read_only: 1,
-          updated_at: 1,
-          previous_updated_at: 1,
-        },
-      },
-    );
-    if (!doc) return null;
-    return {
-      slug: doc.slug,
-      content: doc.content ?? null,
-      read_only: doc.read_only === true,
-      updated_at: doc.updated_at ?? null,
-      previous_updated_at: doc.previous_updated_at ?? null,
-    };
-  },
-);
+export const getEditorDocument = cache(async (slug: string): Promise<EditorDocument | null> => {
+  const col = await documents();
+  const doc = await col.findOne({ slug }, { projection: EDITOR_PROJECTION });
+  return doc ? toEditorDocument(doc) : null;
+});
+
+/** The note behind a public share link, or null if the link is unknown or the note is in the trash. */
+export const getSharedDocument = cache(async (token: string): Promise<EditorDocument | null> => {
+  if (!SHARE_TOKEN_PATTERN.test(token)) return null;
+  const col = await documents();
+  const doc = await col.findOne(
+    { "share.token": token, deleted_at: { $exists: false } },
+    { projection: EDITOR_PROJECTION },
+  );
+  return doc ? toEditorDocument(doc) : null;
+});
+
+/**
+ * Can this signed-in person open this note at its normal address?
+ * A note that doesn't exist yet is open to anyone signed in (they're about to create it).
+ */
+export function canOpen(viewer: Viewer, doc: EditorDocument | null): boolean {
+  if (viewer.role === "admin") return true;
+  if (!doc) return true;
+  return !doc.deleted && doc.visibility !== "private";
+}
 
 /** Content-free facts about a note, for titles and link previews. */
-export async function getNoteFacts(slug: string) {
-  const doc = await getEditorDocument(slug);
+export function noteFacts(doc: EditorDocument | null) {
   return {
     exists: !!doc && !!doc.content,
     words: countWords(doc?.content),
@@ -68,29 +101,61 @@ export async function getNoteFacts(slug: string) {
 export type SaveOutcome =
   | { kind: "saved"; updated_at: string | null; previous_updated_at: string | null }
   | { kind: "locked" }
+  | { kind: "forbidden" }
   | { kind: "conflict"; server_updated_at: string | null };
 
+const hasCurrent = { $ne: [{ $ifNull: ["$content", null] }, null] };
+
+/** The pipeline update shared by every save path. */
+function savePipeline(content: object | null, by: string, now: string) {
+  const derived = derivedFields(content);
+  if (derived.size > MAX_CONTENT_BYTES) {
+    throw new Error("Document is too large to save.");
+  }
+  const stored = derived.is_empty ? null : content;
+  return {
+    stored,
+    pipeline: [
+      {
+        $set: {
+          previous_content: { $cond: [hasCurrent, "$content", "$previous_content"] },
+          previous_updated_at: { $cond: [hasCurrent, "$updated_at", "$previous_updated_at"] },
+          content: { $literal: stored },
+          preview: { $literal: derived.preview },
+          size: derived.size,
+          is_empty: derived.is_empty,
+          updated_at: now,
+          updated_by: { $literal: by },
+          read_only: { $ifNull: ["$read_only", false] },
+          visibility: { $ifNull: ["$visibility", "team"] },
+          version: { $ifNull: ["$version", 1] },
+          created_at: { $ifNull: ["$created_at", now] },
+          created_by: { $ifNull: ["$created_by", { $literal: by }] },
+        },
+      },
+    ],
+  };
+}
+
 /**
- * Save content in one atomic write.
+ * Save content in one atomic write, as a signed-in person.
  * - Keeps exactly one previous version (the content this save replaces).
- * - Refuses to touch locked documents.
+ * - Refuses locked notes, notes in the trash, and (for members) admin-only notes.
  * - Detects conflicts: `baseUpdatedAt` must match what's stored, unless `force`.
  */
 export async function saveDocumentContent(
   slug: string,
   content: object | null,
   baseUpdatedAt: string | null,
-  force = false,
+  force: boolean,
+  viewer: Viewer,
 ): Promise<SaveOutcome> {
-  const derived = derivedFields(content);
-  if (derived.size > MAX_CONTENT_BYTES) {
-    throw new Error("Document is too large to save.");
-  }
-  const stored = derived.is_empty ? null : content;
-  const col = await documents();
   const now = new Date().toISOString();
+  const { stored, pipeline } = savePipeline(content, viewer.username, now);
+  const col = await documents();
 
-  const filter: Filter<Document> = { slug, read_only: { $ne: true } };
+  const filter: Filter<Document> = { slug, read_only: { $ne: true }, deleted_at: { $exists: false } };
+  if (viewer.role !== "admin") filter.visibility = { $ne: "private" };
   if (!force) filter.updated_at = baseUpdatedAt ?? { $exists: false };
 
   // Never create a brand-new document just to store nothing.
@@ -99,54 +164,67 @@ export async function saveDocumentContent(
     if (!exists) return { kind: "saved", updated_at: null, previous_updated_at: null };
   }
 
-  const hasCurrent = { $ne: [{ $ifNull: ["$content", null] }, null] };
-
   try {
-    const result = await col.findOneAndUpdate(
-      filter,
-      [
-        {
-          $set: {
-            previous_content: { $cond: [hasCurrent, "$content", "$previous_content"] },
-            previous_updated_at: { $cond: [hasCurrent, "$updated_at", "$previous_updated_at"] },
-            content: { $literal: stored },
-            preview: { $literal: derived.preview },
-            size: derived.size,
-            is_empty: derived.is_empty,
-            updated_at: now,
-            read_only: { $ifNull: ["$read_only", false] },
-            version: { $ifNull: ["$version", 1] },
-            created_at: { $ifNull: ["$created_at", now] },
-          },
-        },
-      ],
-      {
-        upsert: true,
-        returnDocument: "after",
-        projection: { previous_updated_at: 1 },
-      },
-    );
-    return {
-      kind: "saved",
-      updated_at: now,
-      previous_updated_at: result?.previous_updated_at ?? null,
-    };
+    const result = await col.findOneAndUpdate(filter, pipeline, {
+      upsert: true,
+      returnDocument: "after",
+      projection: { previous_updated_at: 1 },
+    });
+    return { kind: "saved", updated_at: now, previous_updated_at: result?.previous_updated_at ?? null };
   } catch (err) {
-    // Duplicate key: the slug exists but didn't match -> locked or changed elsewhere.
+    // Duplicate key: the slug exists but didn't match. Work out why.
     if ((err as { code?: number }).code !== 11000) throw err;
     const current = await col.findOne(
       { slug },
-      { projection: { read_only: 1, updated_at: 1 } },
+      { projection: { read_only: 1, updated_at: 1, visibility: 1, deleted_at: 1 } },
     );
-    if (current?.read_only) return { kind: "locked" };
-    return { kind: "conflict", server_updated_at: current?.updated_at ?? null };
+    if (!current || current.deleted_at) return { kind: "forbidden" };
+    if (current.visibility === "private" && viewer.role !== "admin") return { kind: "forbidden" };
+    if (current.read_only) return { kind: "locked" };
+    return { kind: "conflict", server_updated_at: current.updated_at ?? null };
   }
+}
+
+/** Save through a public "can edit" share link. Never creates notes. */
+export async function saveSharedContent(
+  token: string,
+  content: object | null,
+  baseUpdatedAt: string | null,
+  force: boolean,
+): Promise<SaveOutcome> {
+  if (!SHARE_TOKEN_PATTERN.test(token)) return { kind: "forbidden" };
+  const now = new Date().toISOString();
+  const { pipeline } = savePipeline(content, "share link", now);
+  const col = await documents();
+
+  const filter: Filter<Document> = {
+    "share.token": token,
+    "share.mode": "write",
+    read_only: { $ne: true },
+    deleted_at: { $exists: false },
+  };
+  if (!force) filter.updated_at = baseUpdatedAt ?? { $exists: false };
+
+  const result = await col.findOneAndUpdate(filter, pipeline, {
+    returnDocument: "after",
+    projection: { previous_updated_at: 1 },
+  });
+  if (result) return { kind: "saved", updated_at: now, previous_updated_at: result.previous_updated_at ?? null };
+
+  const current = await col.findOne(
+    { "share.token": token },
+    { projection: { read_only: 1, updated_at: 1, share: 1, deleted_at: 1 } },
+  );
+  if (!current || current.deleted_at || current.share?.mode !== "write") return { kind: "forbidden" };
+  if (current.read_only) return { kind: "locked" };
+  return { kind: "conflict", server_updated_at: current.updated_at ?? null };
 }
 
 export type RestoreOutcome =
   | { kind: "restored"; content: object | null; updated_at: string; previous_updated_at: string | null }
   | { kind: "none" }
   | { kind: "locked" }
+  | { kind: "forbidden" }
   | { kind: "conflict" };
 
 /**
@@ -155,8 +233,9 @@ export type RestoreOutcome =
  */
 export async function restorePreviousVersion(
   slug: string,
-  { asAdmin = false, baseUpdatedAt }: { asAdmin?: boolean; baseUpdatedAt?: string | null } = {},
+  { viewer, baseUpdatedAt }: { viewer: Viewer; baseUpdatedAt?: string | null },
 ): Promise<RestoreOutcome> {
+  const asAdmin = viewer.role === "admin";
   const col = await documents();
   const doc = await col.findOne(
     { slug },
@@ -165,15 +244,18 @@ export async function restorePreviousVersion(
         content: 1,
         updated_at: 1,
         read_only: 1,
+        visibility: 1,
+        deleted_at: 1,
         previous_content: 1,
         previous_updated_at: 1,
       },
     },
   );
-  if (!doc || doc.previous_content === undefined || doc.previous_content === null) {
-    return { kind: "none" };
-  }
-  if (doc.read_only && !asAdmin) return { kind: "locked" };
+  if (!doc || doc.deleted_at) return { kind: "none" };
+  if (doc.visibility === "private" && !asAdmin) return { kind: "forbidden" };
+  if (doc.previous_content === undefined || doc.previous_content === null) return { kind: "none" };
+  // The editor never restores a locked note; the admin table may.
+  if (doc.read_only && baseUpdatedAt !== undefined) return { kind: "locked" };
   if (baseUpdatedAt !== undefined && (doc.updated_at ?? null) !== baseUpdatedAt) {
     return { kind: "conflict" };
   }
@@ -188,87 +270,155 @@ export async function restorePreviousVersion(
         previous_content: doc.content ?? null,
         previous_updated_at: doc.updated_at,
         updated_at: now,
+        updated_by: viewer.username,
         ...derivedFields(restored),
       },
     },
   );
   if (res.matchedCount === 0) return { kind: "conflict" };
-  return {
-    kind: "restored",
-    content: restored,
-    updated_at: now,
-    previous_updated_at: doc.updated_at ?? null,
-  };
+  return { kind: "restored", content: restored, updated_at: now, previous_updated_at: doc.updated_at ?? null };
 }
 
 /* ------------------------------------------------------------------ */
-/* Admin                                                               */
+/* Lists                                                               */
 /* ------------------------------------------------------------------ */
 
+const LIST_PROJECTION = {
+  _id: 0,
+  slug: 1,
+  read_only: 1,
+  created_at: 1,
+  updated_at: 1,
+  updated_by: 1,
+  preview: 1,
+  size: 1,
+  is_empty: 1,
+  visibility: 1,
+  share: 1,
+  deleted_at: 1,
+  has_previous: { $ne: [{ $ifNull: ["$previous_content", null] }, null] },
+} as const;
+
+type ListRow = Partial<Document> & { slug: string; has_previous?: boolean };
+
+function toSummary(r: ListRow): DocumentSummary {
+  return {
+    slug: r.slug,
+    read_only: r.read_only === true,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    updated_by: r.updated_by,
+    preview: r.preview ?? "",
+    size: r.size ?? 0,
+    is_empty: r.is_empty === true,
+    has_previous: r.has_previous === true,
+    visibility: r.visibility === "private" ? "private" : "team",
+    share: r.share?.token ? r.share : null,
+    deleted_at: r.deleted_at ? new Date(r.deleted_at).toISOString() : undefined,
+  };
+}
+
+const live = { deleted_at: { $exists: false } };
+
+/** Admin table: every note, with filters. */
 export async function listDocuments(query: AdminQuery): Promise<AdminListResult> {
   const col = await documents();
 
-  const base: Filter<Document> = query.q
-    ? { slug: { $regex: escapeRegex(query.q) } }
-    : {};
-  const match: Filter<Document> = { ...base };
-  if (query.filter === "locked") match.read_only = true;
-  if (query.filter === "empty") match.is_empty = true;
-
-  const sortField = query.sort;
+  const base: Filter<Document> = query.q ? { slug: { $regex: escapeRegex(query.q) } } : {};
+  const byFilter: Record<AdminFilter, Filter<Document>> = {
+    all: live,
+    shared: { ...live, "share.token": { $exists: true } },
+    private: { ...live, visibility: "private" },
+    locked: { ...live, read_only: true },
+    empty: { ...live, is_empty: true },
+    trash: { deleted_at: { $exists: true } },
+  };
+  const match: Filter<Document> = { ...base, ...byFilter[query.filter] };
+  // In the trash, newest-deleted first unless sorting by something explicit.
+  const sortField = query.filter === "trash" && query.sort === "updated_at" ? "deleted_at" : query.sort;
   const dir = query.desc ? -1 : 1;
+
+  const isLive = { $eq: [{ $ifNull: ["$deleted_at", null] }, null] };
+  const when = (cond: object) => ({ $sum: { $cond: [{ $and: [isLive, cond] }, 1, 0] } });
 
   const [rows, countsAgg] = await Promise.all([
     col
-      .find(match, {
-        projection: {
-          _id: 0,
-          slug: 1,
-          read_only: 1,
-          created_at: 1,
-          updated_at: 1,
-          preview: 1,
-          size: 1,
-          is_empty: 1,
-          has_previous: { $ne: [{ $ifNull: ["$previous_content", null] }, null] },
-        },
-      })
+      .find(match, { projection: LIST_PROJECTION })
       .sort({ [sortField]: dir, slug: 1 })
       .skip(query.page * ADMIN_PAGE_SIZE)
       .limit(ADMIN_PAGE_SIZE)
       .toArray(),
     col
-      .aggregate<{ all: number; locked: number; empty: number }>([
+      .aggregate<Record<AdminFilter, number>>([
         { $match: base },
         {
           $group: {
             _id: null,
-            all: { $sum: 1 },
-            locked: { $sum: { $cond: [{ $eq: ["$read_only", true] }, 1, 0] } },
-            empty: { $sum: { $cond: [{ $eq: ["$is_empty", true] }, 1, 0] } },
+            all: when({ $literal: true }),
+            shared: when({ $ne: [{ $ifNull: ["$share.token", null] }, null] }),
+            private: when({ $eq: ["$visibility", "private"] }),
+            locked: when({ $eq: ["$read_only", true] }),
+            empty: when({ $eq: ["$is_empty", true] }),
+            trash: { $sum: { $cond: [isLive, 0, 1] } },
           },
         },
       ])
       .toArray(),
   ]);
 
-  const counts = countsAgg[0] ?? { all: 0, locked: 0, empty: 0 };
+  const c = countsAgg[0];
+  const counts: Record<AdminFilter, number> = {
+    all: c?.all ?? 0,
+    shared: c?.shared ?? 0,
+    private: c?.private ?? 0,
+    locked: c?.locked ?? 0,
+    empty: c?.empty ?? 0,
+    trash: c?.trash ?? 0,
+  };
   return {
-    rows: rows.map((r) => ({
-      slug: r.slug,
-      read_only: r.read_only === true,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-      preview: r.preview ?? "",
-      size: r.size ?? 0,
-      is_empty: r.is_empty === true,
-      has_previous: (r as unknown as DocumentSummary).has_previous === true,
-    })),
+    rows: rows.map((r) => toSummary(r as ListRow)),
     total: counts[query.filter],
-    counts: { all: counts.all, locked: counts.locked, empty: counts.empty },
+    counts,
     pageSize: ADMIN_PAGE_SIZE,
   };
 }
+
+export const HOME_PAGE_SIZE = 40;
+
+/** Home screen: the notes this person can open, most recently edited first. Empty notes are skipped. */
+export async function listNotesFor(viewer: Viewer, q: string, page: number) {
+  const col = await documents();
+  const match: Filter<Document> = { ...live, is_empty: { $ne: true } };
+  if (viewer.role !== "admin") match.visibility = { $ne: "private" };
+  if (q) match.slug = { $regex: escapeRegex(q) };
+  const [rows, total] = await Promise.all([
+    col
+      .find(match, { projection: LIST_PROJECTION })
+      .sort({ updated_at: -1, slug: 1 })
+      .skip(page * HOME_PAGE_SIZE)
+      .limit(HOME_PAGE_SIZE)
+      .toArray(),
+    col.countDocuments(match),
+  ]);
+  return { rows: rows.map((r) => toSummary(r as ListRow)), total, pageSize: HOME_PAGE_SIZE };
+}
+
+/** Names only, for the command palette and quick search. */
+export async function listSlugsFor(viewer: Viewer, limit = 2000) {
+  const col = await documents();
+  const match: Filter<Document> = { ...live, is_empty: { $ne: true } };
+  if (viewer.role !== "admin") match.visibility = { $ne: "private" };
+  const rows = await col
+    .find(match, { projection: { _id: 0, slug: 1, updated_at: 1 } })
+    .sort({ updated_at: -1 })
+    .limit(limit)
+    .toArray();
+  return rows.map((r) => ({ slug: r.slug, updated_at: r.updated_at ?? null }));
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin                                                               */
+/* ------------------------------------------------------------------ */
 
 export async function getAdminStats(): Promise<AdminStats> {
   const col = await documents();
@@ -296,6 +446,7 @@ export async function getAdminStats(): Promise<AdminStats> {
           ],
           total: [{ $group: { _id: null, size: { $sum: { $ifNull: ["$size", 0] } } } }],
           largest: [
+            { $match: live },
             { $sort: { size: -1 } },
             { $limit: 5 },
             { $project: { _id: 0, slug: 1, size: { $ifNull: ["$size", 0] } } },
@@ -312,29 +463,126 @@ export async function getAdminStats(): Promise<AdminStats> {
     return { date, created: created.get(date) ?? 0, edited: edited.get(date) ?? 0 };
   });
 
+  return { days, largest: facet.largest, totalSize: facet.total[0]?.size ?? 0 };
+}
+
+const ATLAS_FREE_LIMIT = 512 * 1024 * 1024;
+
+/** How much of the Atlas free tier is in use. The cluster figure needs listDatabases, which may be refused. */
+export async function getStorageInfo(): Promise<StorageInfo> {
+  const db = await connectToMongo();
+  const [stats, cluster] = await Promise.all([
+    db.command({ dbStats: 1 }).catch(() => null),
+    db
+      .admin()
+      .listDatabases()
+      .then((r) => Number(r.totalSize ?? 0) || null)
+      .catch(() => null),
+  ]);
   return {
-    days,
-    largest: facet.largest,
-    totalSize: facet.total[0]?.size ?? 0,
+    appBytes: stats ? Number(stats.storageSize ?? 0) + Number(stats.indexSize ?? 0) : 0,
+    clusterBytes: cluster,
+    limitBytes: ATLAS_FREE_LIMIT,
   };
 }
 
 export async function setReadOnlyMany(slugs: string[], readOnly: boolean) {
   const col = await documents();
-  const res = await col.updateMany({ slug: { $in: slugs } }, { $set: { read_only: readOnly } });
+  const res = await col.updateMany({ slug: { $in: slugs }, ...live }, { $set: { read_only: readOnly } });
   return res.modifiedCount;
 }
 
-export async function deleteMany(slugs: string[]) {
+export async function setVisibilityMany(slugs: string[], visibility: Visibility) {
   const col = await documents();
-  const res = await col.deleteMany({ slug: { $in: slugs } });
+  const res = await col.updateMany({ slug: { $in: slugs }, ...live }, { $set: { visibility } });
+  return res.matchedCount;
+}
+
+export function newShareToken(): string {
+  return randomBytes(9).toString("base64url"); // 12 characters, 72 bits
+}
+
+/**
+ * Turn on (or change) the share link of each note. Existing links keep their
+ * token unless `regenerate` is set, so links already sent keep working.
+ */
+export async function setShareMany(
+  slugs: string[],
+  mode: ShareMode,
+  { regenerate = false }: { regenerate?: boolean } = {},
+): Promise<{ slug: string; token: string; mode: ShareMode }[]> {
+  const col = await documents();
+  const docs = await col
+    .find({ slug: { $in: slugs }, ...live }, { projection: { slug: 1, share: 1 } })
+    .toArray();
+  const now = new Date().toISOString();
+  const out = docs.map((d) => ({
+    slug: d.slug,
+    token: !regenerate && d.share?.token ? d.share.token : newShareToken(),
+    mode,
+    created_at: !regenerate && d.share?.created_at ? d.share.created_at : now,
+  }));
+  if (out.length) {
+    await col.bulkWrite(
+      out.map((o) => ({
+        updateOne: {
+          filter: { slug: o.slug },
+          update: { $set: { share: { token: o.token, mode: o.mode, created_at: o.created_at } } },
+        },
+      })),
+      { ordered: false },
+    );
+  }
+  return out.map(({ slug, token, mode }) => ({ slug, token, mode }));
+}
+
+export async function removeShareMany(slugs: string[]) {
+  const col = await documents();
+  const res = await col.updateMany({ slug: { $in: slugs } }, { $unset: { share: "" } });
+  return res.modifiedCount;
+}
+
+/** Move to the trash. MongoDB removes them for good after 30 days. */
+export async function trashMany(slugs: string[], by: string) {
+  const col = await documents();
+  const res = await col.updateMany(
+    { slug: { $in: slugs }, ...live },
+    { $set: { deleted_at: new Date(), deleted_by: by } },
+  );
+  return res.modifiedCount;
+}
+
+export async function restoreFromTrash(slugs: string[]) {
+  const col = await documents();
+  const res = await col.updateMany(
+    { slug: { $in: slugs }, deleted_at: { $exists: true } },
+    { $unset: { deleted_at: "", deleted_by: "" } },
+  );
+  return res.modifiedCount;
+}
+
+/** Permanently delete notes that are already in the trash. */
+export async function purgeMany(slugs: string[]) {
+  const col = await documents();
+  const res = await col.deleteMany({ slug: { $in: slugs }, deleted_at: { $exists: true } });
   return res.deletedCount;
 }
 
-/** Deletes every empty, unlocked document. */
+export async function emptyTrash() {
+  const col = await documents();
+  const res = await col.deleteMany({ deleted_at: { $exists: true } });
+  return res.deletedCount;
+}
+
+/** Deletes every empty, unlocked, unshared note outright (there's nothing in them to keep). */
 export async function deleteAllEmpty() {
   const col = await documents();
-  const res = await col.deleteMany({ is_empty: true, read_only: { $ne: true } });
+  const res = await col.deleteMany({
+    is_empty: true,
+    read_only: { $ne: true },
+    "share.token": { $exists: false },
+    ...live,
+  });
   return res.deletedCount;
 }
 
@@ -344,7 +592,7 @@ export async function renameDocument(from: string, to: string): Promise<RenameOu
   const col = await documents();
   if (await col.countDocuments({ slug: to }, { limit: 1 })) return { kind: "taken" };
   try {
-    const res = await col.updateOne({ slug: from }, { $set: { slug: to } });
+    const res = await col.updateOne({ slug: from, ...live }, { $set: { slug: to } });
     return res.matchedCount ? { kind: "renamed" } : { kind: "missing" };
   } catch (err) {
     if ((err as { code?: number }).code === 11000) return { kind: "taken" };
@@ -352,14 +600,52 @@ export async function renameDocument(from: string, to: string): Promise<RenameOu
   }
 }
 
+/** Every note with its content, streamed as one JSON document, for backups. */
+export async function exportAll(): Promise<ReadableStream<Uint8Array>> {
+  const col = await documents();
+  const cursor = col
+    .find({}, { projection: { _id: 0, previous_content: 0 } })
+    .sort({ slug: 1 });
+  const enc = new TextEncoder();
+  let first = true;
+  return new ReadableStream({
+    async start(controller) {
+      controller.enqueue(
+        enc.encode(`{"app":"hrleaf","exported_at":${JSON.stringify(new Date().toISOString())},"notes":[\n`),
+      );
+    },
+    async pull(controller) {
+      const doc = await cursor.next();
+      if (!doc) {
+        controller.enqueue(enc.encode("\n]}\n"));
+        controller.close();
+        await cursor.close();
+        return;
+      }
+      controller.enqueue(enc.encode((first ? "" : ",\n") + JSON.stringify(doc)));
+      first = false;
+    },
+    async cancel() {
+      await cursor.close();
+    },
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Misc                                                                */
 /* ------------------------------------------------------------------ */
 
-/** Does a note with this slug exist? */
-export async function slugExists(slug: string): Promise<boolean> {
+/**
+ * What happens if this person opens /slug:
+ * free (new note), open (an existing note they can see), or taken (exists but not for them).
+ */
+export async function slugStatus(slug: string, viewer: Viewer): Promise<"free" | "open" | "taken"> {
   const col = await documents();
-  return (await col.countDocuments({ slug }, { limit: 1 })) > 0;
+  const doc = await col.findOne({ slug }, { projection: { _id: 0, visibility: 1, deleted_at: 1 } });
+  if (!doc) return "free";
+  if (doc.deleted_at) return "taken";
+  if (doc.visibility === "private" && viewer.role !== "admin") return "taken";
+  return "open";
 }
 
 /** Several unused random names, found with one query. */

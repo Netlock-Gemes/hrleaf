@@ -1,9 +1,10 @@
 "use client";
 
+import { Download } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { AdminStats } from "@/types";
+import { AdminStats, StorageInfo } from "@/types";
 
 type Series = "created" | "edited";
 
@@ -27,7 +28,7 @@ function barPath(x: number, y: number, w: number, h: number) {
   return `M${x},${H}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${H}Z`;
 }
 
-export default function ActivityPanel({ stats }: { stats: AdminStats }) {
+export default function ActivityPanel({ stats, storage }: { stats: AdminStats; storage: StorageInfo }) {
   const [series, setSeries] = useState<Series>("edited");
   const [hover, setHover] = useState<number | null>(null);
 
@@ -44,7 +45,7 @@ export default function ActivityPanel({ stats }: { stats: AdminStats }) {
   return (
     <section
       aria-label="Activity"
-      className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+      className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start"
     >
       {/* Activity chart */}
       <div className="panel p-4 sm:p-5">
@@ -158,12 +159,13 @@ export default function ActivityPanel({ stats }: { stats: AdminStats }) {
         </table>
       </div>
 
-      {/* Largest notes */}
-      <div className="panel p-4 sm:p-5">
-        <div className="mb-4">
+      {/* Storage + largest notes */}
+      <div className="panel flex flex-col p-4 sm:p-5">
+        <StorageMeter storage={storage} />
+        <div className="mb-4 mt-6">
           <h2 className="text-sm font-medium">Largest notes</h2>
           <p className="tabular mt-0.5 text-[13px] text-muted-foreground">
-            {formatBytes(stats.totalSize)} stored in total
+            {formatBytes(stats.totalSize)} of note text in total
           </p>
         </div>
         {stats.largest.length === 0 ? (
@@ -188,7 +190,51 @@ export default function ActivityPanel({ stats }: { stats: AdminStats }) {
             ))}
           </ol>
         )}
+        <div className="mt-auto pt-6">
+          <a
+            href="/ainzooalgown/export"
+            download
+            className="flex h-9 items-center justify-center gap-2 rounded-lg border border-border text-[13px] text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground"
+          >
+            <Download className="h-4 w-4" aria-hidden /> Download backup (JSON)
+          </a>
+        </div>
       </div>
     </section>
+  );
+}
+
+/** How full the Atlas free tier is. The cluster figure includes other databases on it. */
+function StorageMeter({ storage }: { storage: StorageInfo }) {
+  const used = storage.clusterBytes ?? storage.appBytes;
+  const pct = Math.min(100, (used / storage.limitBytes) * 100);
+  const appPct = Math.min(pct, (storage.appBytes / storage.limitBytes) * 100);
+  const tone = pct > 85 ? "bg-[hsl(2_70%_60%)]" : pct > 65 ? "bg-[hsl(38_90%_60%)]" : "bg-[--leaf]";
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-medium">Storage</h2>
+        <span className="tabular text-[12.5px] text-muted-foreground">
+          {formatBytes(used)} of {formatBytes(storage.limitBytes)}
+        </span>
+      </div>
+      <div
+        className="mt-2.5 flex h-1.5 overflow-hidden rounded-full bg-[--surface-dark]"
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+        aria-label="Database storage used"
+      >
+        <div className={`h-full ${tone}`} style={{ width: `${Math.max(1, appPct)}%` }} />
+        {storage.clusterBytes ? (
+          <div className="h-full bg-[--text-disabled]" style={{ width: `${Math.max(0, pct - appPct)}%` }} />
+        ) : null}
+      </div>
+      <p className="tabular mt-2 text-[12px] leading-relaxed text-[--text-tertiary]">
+        HRLeaf uses {formatBytes(storage.appBytes)}
+        {storage.clusterBytes ? `; other databases on this cluster use ${formatBytes(Math.max(0, storage.clusterBytes - storage.appBytes))}` : ""}.
+      </p>
+    </div>
   );
 }

@@ -5,18 +5,24 @@ import {
   ArrowUp,
   ChevronLeft,
   ChevronRight,
+  Copy,
   ExternalLink,
   Eye,
+  Globe,
   History,
+  Link2Off,
   Loader2,
   Lock,
+  LockKeyhole,
   LockOpen,
   MoreHorizontal,
   PenLine,
   Plus,
+  RotateCcw,
   Search,
   Sparkles,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +30,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import ShareDialog, { copyText, shareUrl } from "@/app/components/ShareDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,18 +53,26 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   AdminActionResult,
+  ShareActionResult,
   deleteAllEmptyAction,
   deleteDocumentsAction,
+  emptyTrashAction,
+  purgeDocumentsAction,
+  removeShareAction,
   renameDocumentAction,
+  restoreFromTrashAction,
   restorePreviousAction,
   setLockedAction,
+  setShareAction,
+  setVisibilityAction,
 } from "@/server/admin-actions";
-import { AdminFilter, AdminListResult, AdminQuery, AdminSortKey } from "@/types";
+import { AdminFilter, AdminListResult, AdminQuery, AdminSortKey, DocumentSummary, ShareMode } from "@/types";
 
 import { formatBytes } from "./ActivityPanel";
 
@@ -88,8 +103,19 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 type Confirm =
   | { kind: "delete"; slugs: string[] }
+  | { kind: "purge"; slugs: string[] }
+  | { kind: "emptyTrash"; count: number }
   | { kind: "empty"; count: number }
   | { kind: "restore"; slug: string };
+
+const FILTER_LABELS: Record<AdminFilter, string> = {
+  all: "All",
+  shared: "Shared",
+  private: "Only me",
+  locked: "Locked",
+  empty: "Empty",
+  trash: "Trash",
+};
 
 export default function DocumentsTable({
   list,
@@ -110,6 +136,12 @@ export default function DocumentsTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [sharingSlug, setSharingSlug] = useState<string | null>(null);
+  // Read from the latest server data, so the dialog reflects changes as they land.
+  const sharing: DocumentSummary | null = list.rows.find((r) => r.slug === sharingSlug) ?? null;
+  const setSharing = (d: DocumentSummary | null) => setSharingSlug(d?.slug ?? null);
+  const [links, setLinks] = useState<{ slug: string; token: string; mode: ShareMode }[] | null>(null);
+  const inTrash = query.filter === "trash";
 
   const rows = list.rows;
   const pageCount = Math.max(1, Math.ceil(list.total / list.pageSize));
@@ -172,6 +204,14 @@ export default function DocumentsTable({
     );
 
   /* -------------------------------- actions -------------------------------- */
+
+  const shareMany = (mode: ShareMode) =>
+    startAction(async () => {
+      const res: ShareActionResult = await setShareAction(selectedList, mode);
+      if (!res.ok) return void toast.error(res.message);
+      setSelected(new Set());
+      setLinks(res.links);
+    });
 
   const run = (fn: () => Promise<AdminActionResult>, after?: () => void) =>
     startAction(async () => {
@@ -249,24 +289,34 @@ export default function DocumentsTable({
           <div
             role="tablist"
             aria-label="Filter documents"
-            className="flex h-10 flex-1 items-center gap-0.5 rounded-lg border border-border bg-[--surface-dark] p-1 lg:flex-none"
+            className="flex h-10 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto rounded-lg border border-border bg-[--surface-dark] p-1 [scrollbar-width:none] lg:flex-none"
           >
-            {(["all", "locked", "empty"] as const).map((f) => (
+            {(Object.keys(FILTER_LABELS) as AdminFilter[]).map((f) => (
               <button
                 key={f}
                 role="tab"
                 aria-selected={query.filter === f}
                 onClick={() => setParams({ filter: f, page: 0 })}
-                className={`tabular flex h-full flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-[13px] capitalize transition-colors duration-150 lg:flex-none ${
+                className={`tabular flex h-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-[13px] transition-colors duration-150 ${
                   query.filter === f ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {f}
+                {FILTER_LABELS[f]}
                 <span className="text-[--text-tertiary]">{list.counts[f]}</span>
               </button>
             ))}
           </div>
-          {list.counts.empty > 0 && !query.q ? (
+          {inTrash && list.counts.trash > 0 ? (
+            <button
+              type="button"
+              onClick={() => setConfirm({ kind: "emptyTrash", count: list.counts.trash })}
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:border-destructive/40 hover:bg-destructive/10 hover:text-[hsl(2_80%_72%)]"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Empty trash</span>
+            </button>
+          ) : null}
+          {list.counts.empty > 0 && !query.q && !inTrash ? (
             <button
               type="button"
               onClick={() => setConfirm({ kind: "empty", count: list.counts.empty })}
@@ -305,14 +355,14 @@ export default function DocumentsTable({
               <SortHeader label="Name" k="slug" query={query} onSort={toggleSort} />
               <SortHeader label="Size" k="size" query={query} onSort={toggleSort} className="hidden md:table-cell" />
               <SortHeader label="Created" k="created_at" query={query} onSort={toggleSort} className="hidden lg:table-cell" />
-              <SortHeader label="Modified" k="updated_at" query={query} onSort={toggleSort} />
+              <SortHeader label={inTrash ? "Deleted" : "Modified"} k="updated_at" query={query} onSort={toggleSort} />
               <th className="px-3 py-2.5 font-medium">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
           <tbody>
-            {typedSlug && !exactMatch && query.page === 0 ? (
+            {typedSlug && !exactMatch && query.page === 0 && !inTrash ? (
               <tr className="border-b border-border">
                 <td colSpan={6} className="p-0">
                   <Link
@@ -346,21 +396,24 @@ export default function DocumentsTable({
                       >
                         {d.slug}
                       </Link>
-                      {d.read_only ? (
-                        <span
-                          title="Locked"
-                          className="flex shrink-0 items-center gap-1 rounded-full border border-border p-1 text-[11px] text-[--text-secondary] sm:px-1.5 sm:py-px"
-                        >
-                          <Lock className="h-3 w-3" aria-hidden />
-                          <span className="sr-only sm:not-sr-only">Locked</span>
-                        </span>
+                      {d.visibility === "private" ? (
+                        <RowBadge icon={<LockKeyhole className="h-3 w-3" aria-hidden />} label="Only me" />
                       ) : null}
+                      {d.share ? (
+                        <RowBadge
+                          tone="leaf"
+                          icon={<Globe className="h-3 w-3" aria-hidden />}
+                          label={d.share.mode === "write" ? "Public · edit" : "Public"}
+                        />
+                      ) : null}
+                      {d.read_only ? <RowBadge icon={<Lock className="h-3 w-3" aria-hidden />} label="Locked" /> : null}
                     </div>
                     <p
                       className={`mt-0.5 truncate text-[12px] ${d.is_empty ? "italic text-[--text-disabled]" : "text-[--text-tertiary]"}`}
                       title={d.preview || undefined}
                     >
                       {d.is_empty ? "Empty" : d.preview || "No text"}
+                      {d.updated_by && !inTrash ? <span className="not-italic text-[--text-disabled]"> · {d.updated_by}</span> : null}
                     </p>
                   </td>
                   <td className="tabular hidden px-3 py-2.5 text-[13px] text-muted-foreground md:table-cell">
@@ -371,20 +424,31 @@ export default function DocumentsTable({
                   </td>
                   <td
                     className="tabular px-3 py-2.5 text-[13px] text-[--text-secondary]"
-                    title={d.updated_at ? `${dateFmt.format(new Date(d.updated_at))} UTC` : undefined}
+                    title={(inTrash ? d.deleted_at : d.updated_at) ? `${dateFmt.format(new Date((inTrash ? d.deleted_at : d.updated_at)!))} UTC` : undefined}
                   >
-                    {relative(d.updated_at, now)}
+                    {relative(inTrash ? d.deleted_at : d.updated_at, now)}
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex items-center justify-end gap-0.5 transition-opacity duration-150 md:opacity-55 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                      {inTrash ? (
+                        <>
+                          <IconButton label={`Restore ${d.slug}`} onClick={() => run(() => restoreFromTrashAction([d.slug]))}>
+                            <RotateCcw className="h-4 w-4" />
+                          </IconButton>
+                          <IconButton label={`Delete ${d.slug} forever`} onClick={() => setConfirm({ kind: "purge", slugs: [d.slug] })}>
+                            <Trash2 className="h-4 w-4" />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <>
+                      <IconButton label={`Share settings for ${d.slug}`} onClick={() => setSharing(d)} className="hidden sm:flex">
+                        <Globe className={`h-4 w-4 ${d.share ? "text-[--leaf-strong]" : ""}`} />
+                      </IconButton>
                       <IconButton
                         label={d.read_only ? `Unlock ${d.slug}` : `Lock ${d.slug}`}
                         onClick={() => run(() => setLockedAction([d.slug], !d.read_only))}
                       >
                         {d.read_only ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                      </IconButton>
-                      <IconButton label={`Open ${d.slug} in a new tab`} href={`/${d.slug}`} className="hidden sm:flex">
-                        <ExternalLink className="h-4 w-4" />
                       </IconButton>
                       <DropdownMenu>
                         <DropdownMenuTrigger
@@ -394,6 +458,29 @@ export default function DocumentsTable({
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-60">
+                          <DropdownMenuItem className="gap-2" onSelect={() => setSharing(d)}>
+                            <Globe className="h-4 w-4" aria-hidden /> Share settings…
+                          </DropdownMenuItem>
+                          {d.share ? (
+                            <DropdownMenuItem className="gap-2" onSelect={() => copyText(shareUrl(d.share!.token), "Public link copied")}>
+                              <Copy className="h-4 w-4" aria-hidden /> Copy public link
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem
+                            className="gap-2"
+                            onSelect={() => run(() => setVisibilityAction([d.slug], d.visibility === "private" ? "team" : "private"))}
+                          >
+                            {d.visibility === "private" ? (
+                              <>
+                                <Users className="h-4 w-4" aria-hidden /> Show to team
+                              </>
+                            ) : (
+                              <>
+                                <LockKeyhole className="h-4 w-4" aria-hidden /> Make only me
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem className="gap-2" onSelect={() => setRenaming(d.slug)}>
                             <PenLine className="h-4 w-4" aria-hidden /> Rename…
                           </DropdownMenuItem>
@@ -410,6 +497,9 @@ export default function DocumentsTable({
                               ) : null}
                             </div>
                           </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onSelect={() => window.open(`/${d.slug}`, "_blank", "noopener")}>
+                            <ExternalLink className="h-4 w-4" aria-hidden /> Open in new tab
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="gap-2"
                             onSelect={() => window.open(`/${d.slug}/view`, "_blank", "noopener")}
@@ -421,10 +511,12 @@ export default function DocumentsTable({
                             className="gap-2 text-[hsl(2_80%_72%)] focus:bg-destructive/15 focus:text-[hsl(2_80%_75%)]"
                             onSelect={() => setConfirm({ kind: "delete", slugs: [d.slug] })}
                           >
-                            <Trash2 className="h-4 w-4" aria-hidden /> Delete…
+                            <Trash2 className="h-4 w-4" aria-hidden /> Move to trash…
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -435,12 +527,22 @@ export default function DocumentsTable({
               <tr>
                 <td colSpan={6} className="px-4 py-14 text-center">
                   <p className="text-sm text-foreground">
-                    {query.filter === "empty" ? "No empty notes. Nice and tidy." : "No documents match."}
+                    {query.filter === "empty"
+                      ? "No empty notes. Nice and tidy."
+                      : inTrash
+                        ? "The trash is empty."
+                        : query.filter === "shared"
+                          ? "No notes have a public link."
+                          : query.filter === "private"
+                            ? "No notes are hidden from members."
+                            : "No documents match."}
                   </p>
                   <p className="mt-1 text-[13px] text-muted-foreground">
                     {query.q
                       ? "Try a shorter search, or switch the filter to All."
-                      : query.filter !== "all"
+                      : inTrash
+                        ? "Deleted notes stay here for 30 days, then they're removed for good."
+                        : query.filter !== "all"
                         ? "Switch the filter to All to see everything."
                         : "Notes appear here once someone saves one."}
                   </p>
@@ -496,22 +598,75 @@ export default function DocumentsTable({
           aria-label="Bulk actions"
           className="flex items-center gap-1 rounded-xl border border-border bg-popover p-1.5 pl-3 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.75)]"
         >
-          <span className="tabular mr-1 text-[13px] text-foreground">{plural(selected.size, "note")} selected</span>
-          <BulkButton
-            disabled={actionPending}
-            onClick={() => run(() => setLockedAction(selectedList, true), () => setSelected(new Set()))}
-          >
-            <Lock className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Lock</span>
-          </BulkButton>
-          <BulkButton
-            disabled={actionPending}
-            onClick={() => run(() => setLockedAction(selectedList, false), () => setSelected(new Set()))}
-          >
-            <LockOpen className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Unlock</span>
-          </BulkButton>
-          <BulkButton danger disabled={actionPending} onClick={() => setConfirm({ kind: "delete", slugs: selectedList })}>
-            <Trash2 className="h-4 w-4" aria-hidden /> Delete
-          </BulkButton>
+          <span className="tabular mr-1 text-[13px] text-foreground">{selected.size}<span className="hidden sm:inline"> selected</span></span>
+          {inTrash ? (
+            <>
+              <BulkButton
+                disabled={actionPending}
+                onClick={() => run(() => restoreFromTrashAction(selectedList), () => setSelected(new Set()))}
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden /> Restore
+              </BulkButton>
+              <BulkButton danger disabled={actionPending} onClick={() => setConfirm({ kind: "purge", slugs: selectedList })}>
+                <Trash2 className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Delete forever</span>
+              </BulkButton>
+            </>
+          ) : (
+            <>
+              <BulkButton
+                disabled={actionPending}
+                onClick={() => run(() => setLockedAction(selectedList, true), () => setSelected(new Set()))}
+              >
+                <Lock className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Lock</span>
+              </BulkButton>
+              <BulkButton
+                disabled={actionPending}
+                onClick={() => run(() => setLockedAction(selectedList, false), () => setSelected(new Set()))}
+              >
+                <LockOpen className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Unlock</span>
+              </BulkButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  disabled={actionPending}
+                  className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] text-foreground transition-colors duration-150 hover:bg-accent disabled:opacity-50 data-[state=open]:bg-accent"
+                >
+                  <Globe className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Access</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" side="top" className="w-60">
+                  <DropdownMenuLabel className="text-[12px] font-normal text-muted-foreground">Public links</DropdownMenuLabel>
+                  <DropdownMenuItem className="gap-2" onSelect={() => shareMany("read")}>
+                    <Eye className="h-4 w-4" aria-hidden /> Create read-only links
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" onSelect={() => shareMany("write")}>
+                    <PenLine className="h-4 w-4" aria-hidden /> Create edit links
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onSelect={() => run(() => removeShareAction(selectedList), () => setSelected(new Set()))}
+                  >
+                    <Link2Off className="h-4 w-4" aria-hidden /> Turn off links
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[12px] font-normal text-muted-foreground">Signed-in access</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onSelect={() => run(() => setVisibilityAction(selectedList, "team"), () => setSelected(new Set()))}
+                  >
+                    <Users className="h-4 w-4" aria-hidden /> Show to team
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="gap-2"
+                    onSelect={() => run(() => setVisibilityAction(selectedList, "private"), () => setSelected(new Set()))}
+                  >
+                    <LockKeyhole className="h-4 w-4" aria-hidden /> Make only me
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <BulkButton danger disabled={actionPending} onClick={() => setConfirm({ kind: "delete", slugs: selectedList })}>
+                <Trash2 className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Trash</span>
+              </BulkButton>
+            </>
+          )}
           <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
           <button
             type="button"
@@ -531,17 +686,16 @@ export default function DocumentsTable({
             <>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {confirm.slugs.length === 1 ? "Delete this note?" : `Delete ${plural(confirm.slugs.length, "note")}?`}
+                  {confirm.slugs.length === 1 ? "Move this note to the trash?" : `Move ${plural(confirm.slugs.length, "note")} to the trash?`}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {confirm.slugs.length === 1 ? (
-                    <>
-                      <span className="font-mono text-foreground">{confirm.slugs[0]}</span> and its previous version
-                      will be removed permanently.
-                    </>
+                    <span className="font-mono text-foreground">{confirm.slugs[0]}</span>
                   ) : (
-                    <>These notes and their previous versions will be removed permanently. This can&apos;t be undone.</>
-                  )}
+                    "They"
+                  )}{" "}
+                  can&apos;t be opened while in the trash, and share links stop working. You can restore{" "}
+                  {confirm.slugs.length === 1 ? "it" : "them"} for 30 days, then {confirm.slugs.length === 1 ? "it's" : "they're"} deleted for good.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -550,7 +704,38 @@ export default function DocumentsTable({
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => run(() => deleteDocumentsAction(confirm.slugs), () => setSelected(new Set()))}
                 >
-                  Delete {confirm.slugs.length === 1 ? "note" : plural(confirm.slugs.length, "note")}
+                  Move to trash
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : confirm?.kind === "purge" || confirm?.kind === "emptyTrash" ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {confirm.kind === "emptyTrash"
+                    ? "Empty the trash?"
+                    : confirm.slugs.length === 1
+                      ? "Delete this note forever?"
+                      : `Delete ${plural(confirm.slugs.length, "note")} forever?`}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {confirm.kind === "emptyTrash"
+                    ? `${plural(confirm.count, "note")} will be deleted permanently.`
+                    : "They'll be deleted permanently."}{" "}
+                  This can&apos;t be undone. Download a backup first if you might need them.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() =>
+                    confirm.kind === "emptyTrash"
+                      ? run(() => emptyTrashAction())
+                      : run(() => purgeDocumentsAction(confirm.slugs), () => setSelected(new Set()))
+                  }
+                >
+                  Delete forever
                 </AlertDialogAction>
               </AlertDialogFooter>
             </>
@@ -559,8 +744,8 @@ export default function DocumentsTable({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete all empty notes?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {plural(confirm.count, "note")} with no content will be removed. Locked notes are kept. Anyone
-                  opening those links later just gets a fresh, empty page.
+                  {plural(confirm.count, "note")} with no content will be removed. Locked and shared notes are kept.
+                  Opening one of those names later just starts a fresh note.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -594,6 +779,14 @@ export default function DocumentsTable({
       </AlertDialog>
 
       <RenameDialog slug={renaming} onClose={() => setRenaming(null)} />
+      <ShareDialog
+        slug={sharing?.slug ?? null}
+        share={sharing?.share ?? null}
+        visibility={sharing?.visibility ?? "team"}
+        open={sharing !== null}
+        onOpenChange={(o) => !o && setSharing(null)}
+      />
+      <LinksDialog links={links} onClose={() => setLinks(null)} />
     </section>
   );
 }
@@ -627,8 +820,8 @@ function RenameDialog({ slug, onClose }: { slug: string | null; onClose: () => v
         <DialogHeader>
           <DialogTitle>Rename note</DialogTitle>
           <DialogDescription>
-            Changes its address. The old link <span className="font-mono text-foreground">/{slug}</span> will open a
-            new, empty note.
+            Changes its address. The old address <span className="font-mono text-foreground">/{slug}</span> will open
+            a new, empty note. Public share links keep working.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -797,5 +990,69 @@ function IconButton({
     <button type="button" onClick={onClick} aria-label={label} title={label} className={cls}>
       {children}
     </button>
+  );
+}
+
+function LinksDialog({
+  links,
+  onClose,
+}: {
+  links: { slug: string; token: string; mode: ShareMode }[] | null;
+  onClose: () => void;
+}) {
+  const text = (links ?? []).map((l) => `${l.slug}: ${shareUrl(l.token)}`).join("\n");
+  return (
+    <Dialog open={links !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Public links</DialogTitle>
+          <DialogDescription>
+            Anyone with one of these links can {links?.[0]?.mode === "write" ? "read and edit" : "read"} that note. Notes
+            that already had a link keep the same one.
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="max-h-[50vh] divide-y divide-border overflow-y-auto rounded-lg border border-border">
+          {(links ?? []).map((l) => (
+            <li key={l.slug} className="flex items-center gap-2 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-mono text-[13px] text-foreground">{l.slug}</p>
+                <p className="truncate font-mono text-[12px] text-[--text-tertiary]">{shareUrl(l.token)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => copyText(shareUrl(l.token), `Link for ${l.slug} copied`)}
+                aria-label={`Copy link for ${l.slug}`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[--text-tertiary] transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={() => copyText(text, "All links copied")}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Copy className="h-4 w-4" aria-hidden /> Copy all
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RowBadge({ icon, label, tone }: { icon: React.ReactNode; label: string; tone?: "leaf" }) {
+  return (
+    <span
+      title={label}
+      className={`flex shrink-0 items-center gap-1 rounded-full border p-1 text-[11px] sm:px-1.5 sm:py-px ${
+        tone === "leaf" ? "border-[--leaf]/35 text-[--leaf-strong]" : "border-border text-[--text-secondary]"
+      }`}
+    >
+      {icon}
+      <span className="sr-only sm:not-sr-only">{label}</span>
+    </span>
   );
 }

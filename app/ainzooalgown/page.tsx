@@ -1,26 +1,16 @@
-import { Metadata } from "next";
-
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
-import { requireAdmin } from "@/server/admin-auth";
-import { getAdminStats, listDocuments } from "@/server/document-service";
+import { requireAdmin } from "@/server/auth";
+import { getAdminStats, getStorageInfo, listDocuments } from "@/server/document-service";
 import { AdminFilter, AdminQuery, AdminSortKey } from "@/types";
 
-import SiteHeader from "../components/SiteHeader";
-
-import AccountMenu from "./AccountMenu";
 import ActivityPanel from "./ActivityPanel";
 import DocumentsTable from "./DocumentsTable";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Admin",
-  robots: { index: false, follow: false },
-};
-
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-const FILTERS: AdminFilter[] = ["all", "locked", "empty"];
+const FILTERS: AdminFilter[] = ["all", "shared", "private", "locked", "empty", "trash"];
 const SORTS: AdminSortKey[] = ["slug", "size", "created_at", "updated_at"];
 
 function parseQuery(sp: Record<string, string | string[] | undefined>): AdminQuery {
@@ -40,38 +30,30 @@ function parseQuery(sp: Record<string, string | string[] | undefined>): AdminQue
 export default async function AdminPage({ searchParams }: { searchParams: SearchParams }) {
   await requireAdmin();
   const query = parseQuery(await searchParams);
-  const [list, stats] = await Promise.all([listDocuments(query), getAdminStats()]);
+  const [list, stats, storage] = await Promise.all([listDocuments(query), getAdminStats(), getStorageInfo()]);
 
   return (
-    <div className="flex min-h-[100svh] flex-col">
-      <SiteHeader
-        wide
-        homeHref="/ainzooalgown"
-        trail={<span className="text-[13px] text-muted-foreground">Admin</span>}
-      >
-        <AccountMenu username={process.env.ADMIN_USERNAME ?? "admin"} />
-      </SiteHeader>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
-        <div className="mb-7 flex items-end justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <h1 className="text-[1.75rem] font-semibold leading-none tracking-[-0.025em]">Documents</h1>
-            <p className="tabular text-[13px] text-muted-foreground">
-              {list.counts.all} notes · {list.counts.locked} locked · {list.counts.empty} empty
-              {query.q ? ` matching “${query.q}”` : ""}
-            </p>
-          </div>
-          <NewNoteButton label="New note" variant="primary" shortcut />
+    <main className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
+      <div className="mb-7 flex items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h1 className="text-[1.75rem] font-semibold leading-none tracking-[-0.025em]">Notes</h1>
+          <p className="tabular text-[13px] text-muted-foreground">
+            {list.counts.all} notes · {list.counts.shared} shared · {list.counts.private} only you
+            {list.counts.trash ? ` · ${list.counts.trash} in trash` : ""}
+            {query.q ? ` matching “${query.q}”` : ""}
+          </p>
         </div>
-        {/* On phones the list comes first; the overview follows it. */}
-        <div className="flex flex-col gap-6 lg:gap-8">
-          <div className="order-2 lg:order-1">
-            <ActivityPanel stats={stats} />
-          </div>
-          <div className="order-1 lg:order-2">
-            <DocumentsTable list={list} query={query} now={Date.now()} />
-          </div>
+        <NewNoteButton label="New note" variant="primary" shortcut />
+      </div>
+      {/* On phones the list comes first; the overview follows it. */}
+      <div className="flex flex-col gap-6 lg:gap-8">
+        <div className="order-2 lg:order-1">
+          <ActivityPanel stats={stats} storage={storage} />
         </div>
-      </main>
-    </div>
+        <div className="order-1 lg:order-2">
+          <DocumentsTable list={list} query={query} now={Date.now()} />
+        </div>
+      </div>
+    </main>
   );
 }

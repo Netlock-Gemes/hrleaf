@@ -1,5 +1,3 @@
-import "katex/dist/katex.css";
-
 import { PenLine } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -7,9 +5,10 @@ import { notFound } from "next/navigation";
 
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
 import SiteHeader from "@/app/components/SiteHeader";
-import { noteSummary } from "@/lib/site";
-import { renderDocumentStatic } from "@/lib/static-render";
-import { getEditorDocument, getNoteFacts } from "@/server/document-service";
+import StaticNote, { formatDay } from "@/app/components/StaticNote";
+import UserMenu from "@/app/components/UserMenu";
+import { getViewer, requireViewer } from "@/server/auth";
+import { canOpen, getEditorDocument } from "@/server/document-service";
 import { normaliseSlug } from "@/server/document-utils";
 
 export const dynamic = "force-dynamic";
@@ -18,38 +17,25 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: raw } = await params;
-  const slug = normaliseSlug(raw) ?? raw;
-  const facts = await getNoteFacts(slug).catch(() => null);
-  const description = facts
-    ? `Read-only view of a private HRLeaf note. ${noteSummary({ ...facts, read_only: false }).join(" · ")}.`
-    : "Read-only view of a private HRLeaf note.";
-  return {
-    title: `${slug} (read only)`,
-    description,
-    alternates: { canonical: `/${slug}/view` },
-    openGraph: { type: "article", title: `/${slug}`, description, url: `/${slug}/view` },
-    twitter: { card: "summary_large_image", title: `/${slug} (read only)`, description },
-  };
+  const slug = normaliseSlug(raw);
+  if (!(await getViewer()) || !slug) return { title: "Sign in" };
+  return { title: `${slug} (read only)` };
 }
 
-/** Read-only, editor-free view of the last saved version. Ships almost no JavaScript. */
+/** Read-only view of the last saved version, for signed-in people. */
 export default async function ViewPage({ params }: Props) {
   const { slug: raw } = await params;
   const slug = normaliseSlug(raw);
   if (!slug) notFound();
 
+  const viewer = await requireViewer(`/${slug}/view`);
   const doc = await getEditorDocument(slug);
-  const body = renderDocumentStatic(doc?.content, { equations: "katex" });
-
-  const updated = doc?.updated_at
-    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(doc.updated_at))
-    : null;
+  if (!canOpen(viewer, doc) || doc?.deleted) notFound();
+  const updated = formatDay(doc?.updated_at);
 
   return (
     <div className="editor-main">
-      <SiteHeader
-        trail={<span className="block truncate font-mono text-[13px] text-[--text-secondary]">{slug}</span>}
-      >
+      <SiteHeader trail={<span className="block truncate font-mono text-[13px] text-[--text-secondary]">{slug}</span>}>
         <span className="hidden text-[13px] text-[--text-tertiary] sm:inline">
           Read only{updated ? ` · updated ${updated}` : ""}
         </span>
@@ -63,18 +49,9 @@ export default async function ViewPage({ params }: Props) {
           </Link>
         )}
         <NewNoteButton />
+        <UserMenu viewer={viewer} className="ml-0.5" />
       </SiteHeader>
-      <div className="editor-root">
-        <article className="editor-area cursor-auto">
-          <div className="editor-wrapper">
-            {body ? (
-              <div className="editor-input editor-static">{body}</div>
-            ) : (
-              <p className="text-[--text-tertiary]">This note is empty.</p>
-            )}
-          </div>
-        </article>
-      </div>
+      <StaticNote content={doc?.content} />
     </div>
   );
 }

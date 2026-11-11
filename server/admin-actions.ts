@@ -1,88 +1,34 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
-import {
-  SESSION_COOKIE,
-  SESSION_MAX_AGE,
-  createSessionToken,
-  safeEqual,
-} from "@/lib/session";
+import { ShareMode, Viewer, Visibility } from "@/types";
 
-import { requireAdmin } from "./admin-auth";
+import { audit } from "./audit";
+import { getViewer } from "./auth";
 import {
   deleteAllEmpty,
-  deleteMany,
+  emptyTrash,
+  purgeMany,
+  removeShareMany,
   renameDocument,
+  restoreFromTrash,
   restorePreviousVersion,
   setReadOnlyMany,
+  setShareMany,
+  setVisibilityMany,
+  trashMany,
 } from "./document-service";
 import { RESERVED_SLUGS, normaliseSlug } from "./document-utils";
-import { clearFailedLogins, clientIp, loginRetryAfter, recordFailedLogin } from "./rate-limit";
-
-export type LoginState = { error: string | null; username?: string };
-
-export async function loginAction(
-  _prev: LoginState,
-  formData: FormData,
-): Promise<LoginState> {
-  const username = String(formData.get("username") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  const expectedUser = process.env.ADMIN_USERNAME;
-  const expectedPass = process.env.ADMIN_PASSWORD;
-  if (!expectedUser || !expectedPass) {
-    return {
-      error: "Admin login is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in .env.",
-      username,
-    };
-  }
-
-  const ip = await clientIp();
-  const retryAfter = await loginRetryAfter(ip);
-  if (retryAfter > 0) {
-    const minutes = Math.ceil(retryAfter / 60);
-    return {
-      error: `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
-      username,
-    };
-  }
-
-  const [userOk, passOk] = await Promise.all([
-    safeEqual(username, expectedUser),
-    safeEqual(password, expectedPass),
-  ]);
-
-  if (!userOk || !passOk) {
-    await recordFailedLogin(ip);
-    // Small fixed delay to slow down guessing.
-    await new Promise((r) => setTimeout(r, 600));
-    return { error: "That username and password don't match.", username };
-  }
-
-  await clearFailedLogins(ip);
-
-  const store = await cookies();
-  store.set(SESSION_COOKIE, await createSessionToken(expectedUser), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
-
-  redirect("/ainzooalgown");
-}
-
-export async function logoutAction(): Promise<void> {
-  const store = await cookies();
-  store.delete(SESSION_COOKIE);
-  redirect("/ainzooalgown/login");
-}
-
-/* ---------------------------- document admin ---------------------------- */
+import { MIN_PASSWORD_LENGTH, generatePassword } from "./passwords";
+import {
+  createUser,
+  deleteUser,
+  normaliseUsername,
+  setPassword,
+  signOutEverywhere,
+  updateUser,
+} from "./users-service";
 
 export type AdminActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -92,12 +38,17 @@ function cleanSlugs(slugs: unknown): string[] {
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const names = (list: string[]) => (list.length <= 3 ? list.join(", ") : `${list.slice(0, 3).join(", ")} +${list.length - 3}`);
 
-async function guarded(fn: () => Promise<AdminActionResult>): Promise<AdminActionResult> {
-  await requireAdmin();
+/** Every admin action: check the caller, run, refresh admin pages, never leak server errors. */
+async function guarded<T extends { ok: boolean; message: string }>(
+  fn: (admin: Viewer) => Promise<T>,
+): Promise<T | AdminActionResult> {
+  const viewer = await getViewer();
+  if (viewer?.role !== "admin") return { ok: false, message: "Not allowed." };
   try {
-    const res = await fn();
-    revalidatePath("/ainzooalgown");
+    const res = await fn(viewer);
+    revalidatePath("/ainzooalgown", "layout");
     return res;
   } catch (err) {
     console.error("[admin]", err);
@@ -105,58 +56,251 @@ async function guarded(fn: () => Promise<AdminActionResult>): Promise<AdminActio
   }
 }
 
+/* --------------------------------- notes --------------------------------- */
+
 export async function setLockedAction(slugs: string[], locked: boolean) {
-  return guarded(async () => {
+  return guarded(async (admin) => {
     const list = cleanSlugs(slugs);
     if (!list.length) return { ok: false, message: "Nothing selected." };
     await setReadOnlyMany(list, locked);
+    await audit({ actor: admin.username, action: locked ? "locked" : "unlocked", target: names(list) });
+    const verb = locked ? "Locked" : "Unlocked";
+    return { ok: true, message: list.length === 1 ? `${verb} ${list[0]}` : `${verb} ${plural(list.length, "note")}` };
+  });
+}
+
+export async function setVisibilityAction(slugs: string[], visibility: Visibility) {
+  return guarded(async (admin) => {
+    const list = cleanSlugs(slugs);
+    if (!list.length) return { ok: false, message: "Nothing selected." };
+    if (visibility !== "team" && visibility !== "private") return { ok: false, message: "Invalid choice." };
+    await setVisibilityMany(list, visibility);
+    await audit({
+      actor: admin.username,
+      action: visibility === "private" ? "made only-me" : "made visible to team",
+      target: names(list),
+    });
+    const what = visibility === "private" ? "Only you can see" : "Your team can see";
+    return { ok: true, message: list.length === 1 ? `${what} ${list[0]}` : `${what} ${plural(list.length, "note")}` };
+  });
+}
+
+export type ShareActionResult =
+  | { ok: true; message: string; links: { slug: string; token: string; mode: ShareMode }[] }
+  | { ok: false; message: string };
+
+export async function setShareAction(
+  slugs: string[],
+  mode: ShareMode,
+  opts: { regenerate?: boolean } = {},
+): Promise<ShareActionResult> {
+  return guarded<ShareActionResult>(async (admin) => {
+    const list = cleanSlugs(slugs);
+    if (!list.length) return { ok: false, message: "Nothing selected." };
+    if (mode !== "read" && mode !== "write") return { ok: false, message: "Invalid choice." };
+    const links = await setShareMany(list, mode, { regenerate: opts.regenerate === true });
+    if (!links.length) return { ok: false, message: "Those notes no longer exist." };
+    await audit({
+      actor: admin.username,
+      action: opts.regenerate
+        ? "replaced the share link"
+        : mode === "write"
+          ? "shared (can edit)"
+          : "shared (read only)",
+      target: names(links.map((l) => l.slug)),
+    });
     return {
       ok: true,
-      message: list.length === 1 ? `${locked ? "Locked" : "Unlocked"} ${list[0]}` : `${locked ? "Locked" : "Unlocked"} ${plural(list.length, "note")}`,
+      message: opts.regenerate
+        ? "New link created. The old one no longer works."
+        : links.length === 1
+          ? `Anyone with the link can ${mode === "write" ? "edit" : "read"} ${links[0].slug}`
+          : `Created ${plural(links.length, "link")}`,
+      links,
+    };
+  }) as Promise<ShareActionResult>;
+}
+
+export async function removeShareAction(slugs: string[]) {
+  return guarded(async (admin) => {
+    const list = cleanSlugs(slugs);
+    if (!list.length) return { ok: false, message: "Nothing selected." };
+    await removeShareMany(list);
+    await audit({ actor: admin.username, action: "turned off the share link", target: names(list) });
+    return {
+      ok: true,
+      message: list.length === 1 ? `The share link for ${list[0]} no longer works` : `Turned off ${plural(list.length, "link")}`,
     };
   });
 }
 
 export async function deleteDocumentsAction(slugs: string[]) {
-  return guarded(async () => {
+  return guarded(async (admin) => {
     const list = cleanSlugs(slugs);
     if (!list.length) return { ok: false, message: "Nothing selected." };
-    const n = await deleteMany(list);
-    return { ok: true, message: list.length === 1 ? `Deleted ${list[0]}` : `Deleted ${plural(n, "note")}` };
+    const n = await trashMany(list, admin.username);
+    await audit({ actor: admin.username, action: "moved to trash", target: names(list) });
+    return {
+      ok: true,
+      message: list.length === 1 ? `Moved ${list[0]} to the trash` : `Moved ${plural(n, "note")} to the trash`,
+    };
+  });
+}
+
+export async function restoreFromTrashAction(slugs: string[]) {
+  return guarded(async (admin) => {
+    const list = cleanSlugs(slugs);
+    if (!list.length) return { ok: false, message: "Nothing selected." };
+    const n = await restoreFromTrash(list);
+    await audit({ actor: admin.username, action: "restored from trash", target: names(list) });
+    return { ok: true, message: list.length === 1 ? `Restored ${list[0]}` : `Restored ${plural(n, "note")}` };
+  });
+}
+
+export async function purgeDocumentsAction(slugs: string[]) {
+  return guarded(async (admin) => {
+    const list = cleanSlugs(slugs);
+    if (!list.length) return { ok: false, message: "Nothing selected." };
+    const n = await purgeMany(list);
+    await audit({ actor: admin.username, action: "deleted forever", target: names(list) });
+    return { ok: true, message: `Deleted ${plural(n, "note")} forever` };
+  });
+}
+
+export async function emptyTrashAction() {
+  return guarded(async (admin) => {
+    const n = await emptyTrash();
+    await audit({ actor: admin.username, action: "emptied the trash", detail: plural(n, "note") });
+    return { ok: true, message: n ? `Deleted ${plural(n, "note")} forever` : "The trash was already empty." };
   });
 }
 
 export async function deleteAllEmptyAction() {
-  return guarded(async () => {
+  return guarded(async (admin) => {
     const n = await deleteAllEmpty();
+    if (n) await audit({ actor: admin.username, action: "deleted empty notes", detail: plural(n, "note") });
     return { ok: true, message: n ? `Deleted ${plural(n, "empty note")}` : "There were no empty notes." };
   });
 }
 
 export async function renameDocumentAction(from: string, to: string) {
-  return guarded(async () => {
+  return guarded(async (admin) => {
     const a = normaliseSlug(from);
     const b = normaliseSlug(to);
     if (!a) return { ok: false, message: "Invalid note." };
     if (!b) return { ok: false, message: "Use lowercase letters, numbers and dashes (up to 64)." };
     if (a === b) return { ok: false, message: "That's already its name." };
-    if (RESERVED_SLUGS.has(b)) {
-      return { ok: false, message: "That name is reserved." };
-    }
+    if (RESERVED_SLUGS.has(b)) return { ok: false, message: "That name is reserved." };
     const out = await renameDocument(a, b);
     if (out.kind === "taken") return { ok: false, message: `${b} is already taken.` };
     if (out.kind === "missing") return { ok: false, message: `${a} no longer exists.` };
+    await audit({ actor: admin.username, action: "renamed", target: b, detail: `from ${a}` });
     return { ok: true, message: `Renamed to ${b}` };
   });
 }
 
 export async function restorePreviousAction(slug: string) {
-  return guarded(async () => {
+  return guarded(async (admin) => {
     const s = normaliseSlug(slug);
     if (!s) return { ok: false, message: "Invalid note." };
-    const out = await restorePreviousVersion(s, { asAdmin: true });
+    const out = await restorePreviousVersion(s, { viewer: admin });
     if (out.kind === "none") return { ok: false, message: "There's no previous version." };
     if (out.kind !== "restored") return { ok: false, message: "It changed meanwhile. Try again." };
+    await audit({ actor: admin.username, action: "restored the previous version", target: s });
     return { ok: true, message: `Restored the previous version of ${s}` };
+  });
+}
+
+/* --------------------------------- users --------------------------------- */
+
+export type CredentialsResult =
+  | { ok: true; message: string; username: string; password: string }
+  | { ok: false; message: string };
+
+function cleanName(name: unknown) {
+  return String(name ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+}
+
+function checkPassword(pw: string | undefined): string | null {
+  if (pw === undefined || pw === "") return null;
+  if (pw.length < MIN_PASSWORD_LENGTH) return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+  if (pw.length > 200) return "That password is too long.";
+  return null;
+}
+
+export async function createUserAction(input: {
+  username: string;
+  name: string;
+  password?: string;
+}): Promise<CredentialsResult> {
+  return guarded<CredentialsResult>(async (admin) => {
+    const username = normaliseUsername(input.username);
+    if (!username) {
+      return { ok: false, message: "Usernames are 2–32 characters: lowercase letters, numbers, dots, dashes or underscores." };
+    }
+    if (username === (process.env.ADMIN_USERNAME ?? "").toLowerCase()) {
+      return { ok: false, message: "That's the admin's username." };
+    }
+    const pwError = checkPassword(input.password);
+    if (pwError) return { ok: false, message: pwError };
+    const password = input.password || generatePassword();
+    const name = cleanName(input.name) || username;
+
+    const out = await createUser(username, name, password);
+    if (out.kind === "taken") return { ok: false, message: `${username} is already taken.` };
+    await audit({ actor: admin.username, action: "added user", target: username });
+    return { ok: true, message: `Added ${username}`, username, password };
+  }) as Promise<CredentialsResult>;
+}
+
+export async function resetPasswordAction(id: string, password?: string): Promise<CredentialsResult> {
+  return guarded<CredentialsResult>(async (admin) => {
+    const pwError = checkPassword(password);
+    if (pwError) return { ok: false, message: pwError };
+    const pw = password || generatePassword();
+    const user = await setPassword(String(id), pw);
+    if (!user) return { ok: false, message: "That user no longer exists." };
+    await audit({ actor: admin.username, action: "reset password", target: user.username });
+    return { ok: true, message: `New password for ${user.username}. They've been signed out everywhere.`, username: user.username, password: pw };
+  }) as Promise<CredentialsResult>;
+}
+
+export async function updateUserAction(id: string, patch: { name?: string; disabled?: boolean }) {
+  return guarded(async (admin) => {
+    const clean: { name?: string; disabled?: boolean } = {};
+    if (patch.name !== undefined) {
+      clean.name = cleanName(patch.name);
+      if (!clean.name) return { ok: false, message: "Enter a name." };
+    }
+    if (patch.disabled !== undefined) clean.disabled = patch.disabled === true;
+    const user = await updateUser(String(id), clean);
+    if (!user) return { ok: false, message: "That user no longer exists." };
+    if (clean.disabled !== undefined) {
+      await audit({ actor: admin.username, action: clean.disabled ? "disabled user" : "enabled user", target: user.username });
+      return {
+        ok: true,
+        message: clean.disabled ? `${user.username} is disabled and signed out` : `${user.username} can sign in again`,
+      };
+    }
+    await audit({ actor: admin.username, action: "renamed user", target: user.username, detail: clean.name });
+    return { ok: true, message: "Saved" };
+  });
+}
+
+export async function signOutUserAction(id: string) {
+  return guarded(async (admin) => {
+    const user = await signOutEverywhere(String(id));
+    if (!user) return { ok: false, message: "That user no longer exists." };
+    await audit({ actor: admin.username, action: "signed out user everywhere", target: user.username });
+    return { ok: true, message: `${user.username} is signed out on every device` };
+  });
+}
+
+export async function deleteUserAction(id: string) {
+  return guarded(async (admin) => {
+    const user = await deleteUser(String(id));
+    if (!user) return { ok: false, message: "That user no longer exists." };
+    await audit({ actor: admin.username, action: "deleted user", target: user.username });
+    return { ok: true, message: `Deleted ${user.username}. Their notes stay.` };
   });
 }

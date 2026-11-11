@@ -10,6 +10,13 @@ const MONGO_URI = process.env.MONGODB_URI || "mongodb://localhost:27017";
 const DB_NAME = process.env.MONGODB_DB || "hrleaf";
 
 export const DOCUMENTS_COLLECTION_NAME = "documents";
+export const USERS_COLLECTION_NAME = "users";
+export const AUDIT_COLLECTION_NAME = "audit_log";
+
+/** Trashed notes are removed by MongoDB this long after deletion. */
+export const TRASH_DAYS = 30;
+/** Activity log entries are removed by MongoDB after this long. */
+export const AUDIT_DAYS = 90;
 
 // Cache on globalThis so dev hot-reloads and concurrent requests share one pool.
 const globalForMongo = globalThis as unknown as {
@@ -48,8 +55,26 @@ async function connect(): Promise<Db> {
       { key: { slug: 1 }, name: "slug_unique", unique: true },
       { key: { updated_at: -1 }, name: "updated_at_desc" },
       { key: { is_empty: 1, updated_at: -1 }, name: "is_empty_updated" },
+      {
+        key: { "share.token": 1 },
+        name: "share_token_unique",
+        unique: true,
+        partialFilterExpression: { "share.token": { $exists: true } },
+      },
+      // Only notes with deleted_at set (i.e. in the trash) are ever removed by this.
+      { key: { deleted_at: 1 }, name: "trash_ttl", expireAfterSeconds: TRASH_DAYS * 86_400 },
     ])
     .catch((err) => console.error("[mongo] index creation failed:", err));
+
+  await Promise.all([
+    db
+      .collection(USERS_COLLECTION_NAME)
+      .createIndex({ username: 1 }, { name: "username_unique", unique: true }),
+    db
+      .collection(AUDIT_COLLECTION_NAME)
+      // Also serves "newest first" reads.
+      .createIndex({ at: 1 }, { name: "audit_ttl", expireAfterSeconds: AUDIT_DAYS * 86_400 }),
+  ]).catch((err) => console.error("[mongo] index creation failed:", err));
 
   await backfillDerivedFields(db).catch((err) =>
     console.error("[mongo] backfill failed:", err),

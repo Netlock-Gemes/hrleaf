@@ -1,11 +1,24 @@
 # HRLeaf
 
-A private notebook. Every note lives at its own link and is shared only with the people you send it to. HRLeaf is not a public service: every page asks search engines not to index it.
+A private, invitation-only notebook. Notes are only open to signed-in accounts that the admin creates. Any single note can also be shared through a public link that is read-only or editable. Every page asks search engines not to index it.
 
-- Visit `/` to get a fresh note with a random name, or go to `/anything-you-want`
+- Sign in at `/login`. Home (`/`) lists every note you can open, with search
+- Press **New note** (or `N`) and pick a name, or go straight to `/anything-you-want`
 - Write with Markdown shortcuts, the `/` command menu, or the formatting toolbar
 - Press **Save** or `Ctrl/⌘ + S`. The button lights up only when there's something to save
-- Share the link to edit together, or a read-only link (`/your-note/view`)
+
+## Who can open what
+
+| Person | Signs in with | Can open |
+| --- | --- | --- |
+| **Admin** | `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env` | Every note, plus the admin area |
+| **Member** | An account the admin creates | Every **Team** note (read and edit). Never notes marked **Only me**, never the admin area |
+| **Anyone with a share link** | Nothing | Only that one note at `/s/<code>`, read-only or editable as the admin set it |
+
+- New notes are **Team** notes. The admin can switch any note to **Only me**.
+- Share links use a random 12-character code, not the note's name, so they can't be guessed. The admin can switch a link between read-only and editable, replace it (the old link stops working), or turn it off.
+- Signed-out visitors get the sign-in page for every note address, whether or not the note exists. Link previews for notes show only the HRLeaf brand image. Previews for share links show the note's name, never its text.
+- Disabling a member, resetting their password, or "Sign out everywhere" ends their sessions immediately.
 
 ## Writing
 
@@ -16,6 +29,7 @@ A private notebook. Every note lives at its own link and is shared only with the
 - Leaving with unsaved changes asks whether to save, discard, or stay.
 - **Restore previous version.** The version before your last save is kept (exactly one). Restoring swaps it with the current one, so you can always switch back.
 - **Conflict protection.** If someone else saved the note after you opened it, you choose to keep yours or load theirs. Nothing is overwritten silently.
+- **Unsaved changes survive crashes.** Unsaved edits are kept in this browser. If the tab closes or the device restarts, reopening the note offers them back. Signing out clears them.
 
 ### Formatting toolbar
 
@@ -54,14 +68,20 @@ The note name in the header opens your **recent notes** (stored in this browser 
 
 ## Admin
 
-The admin dashboard (its route is set in `middleware.ts`) is protected by a single admin account from `.env`. It has:
+The admin area is reachable only by the admin account; everyone else gets a plain 404. It has three tabs.
 
-- Server-side search, filters (All, Locked, Empty), sorting and paging
-- A text preview of every note, its size, and created/modified times
-- Activity chart (notes edited or created per day, last 30 days) and the largest notes
-- Per note: lock/unlock, rename, restore previous version, read-only view, delete
-- Bulk select: lock, unlock or delete many notes at once
-- **Delete empty**: removes every empty, unlocked note in one go
+**Notes**
+- Server-side search, filters (All, Shared, Only me, Locked, Empty, Trash), sorting and paging
+- A text preview of every note, who edited it last, its size, and created/modified times
+- Per note: share settings (Team / Only me, public link read or edit), lock/unlock, rename, restore previous version, move to trash
+- Bulk select: lock, unlock, create or turn off share links, change visibility, move to trash
+- **Trash**: deleted notes can be restored for 30 days, then MongoDB removes them automatically
+- **Delete empty**: removes every empty note that isn't locked or shared
+- Activity chart, largest notes, a **storage meter** for the Atlas free tier (512 MB), and **Download backup** (every note as one JSON file, built on request)
+
+**Users**: add a member (a strong password is generated and shown once, ready to copy), reset password, rename, disable or enable, sign out everywhere, delete. Their notes stay.
+
+**Activity**: sign-ins (including failed ones), sharing, visibility, trash and user changes, filterable by person. Entries delete themselves after 90 days.
 
 ## Brand
 
@@ -86,11 +106,17 @@ npm run dev            # http://localhost:3000
 | --- | --- |
 | `MONGODB_URI` | MongoDB connection string |
 | `MONGODB_DB` | Database name (default `hrleaf`) |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | The admin login |
-| `AUTH_SECRET` | 32+ random characters that sign the admin cookie |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | The admin login. Members are created in the admin area, not here |
+| `AUTH_SECRET` | 32+ random characters that sign session cookies. Changing it signs everyone out |
 | `NEXT_PUBLIC_SITE_URL` | Optional. Your public URL, used in `robots.txt` |
 
-On first start the app creates its indexes and fills in preview/size fields for existing notes automatically.
+On first start the app creates its indexes (including the trash and activity-log expiry) and fills in preview/size fields for existing notes automatically. Notes from before accounts existed become **Team** notes.
+
+## Security
+
+- Passwords are hashed with scrypt; sessions are HMAC-signed, `httpOnly` cookies (admin 7 days, members 30 days).
+- Sign-in is rate limited (5 failures per IP per 15 minutes, 50 overall). Saves through editable share links are limited to 120 per IP per 10 minutes.
+- Security headers on every response: Content-Security-Policy, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy (`no-referrer` on share links), Permissions-Policy and HSTS.
 
 ## How it's built
 
@@ -104,7 +130,7 @@ Notes render to HTML on the server, so text appears before the editor's JavaScri
 
 ## Privacy
 
-Notes are not private: anyone with the link can read and edit an unlocked note. Don't store secrets. See [/privacy](app/(main)/privacy/page.tsx).
+Notes need a signed-in account, except notes the admin has shared with a public link. Anyone who has that link can open the note, so keep secrets out of shared notes. See [/privacy](app/(main)/privacy/page.tsx).
 
 ## License
 

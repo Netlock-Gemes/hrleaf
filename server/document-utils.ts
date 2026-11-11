@@ -9,7 +9,20 @@ import {
 export const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 /** Names that are real routes, so they can't be notes. */
-export const RESERVED_SLUGS = new Set(["ainzooalgown", "privacy", "api", "robots.txt", "_next"]);
+export const RESERVED_SLUGS = new Set([
+  "ainzooalgown",
+  "privacy",
+  "api",
+  "robots.txt",
+  "_next",
+  "login",
+  "logout",
+  "s",
+  "manifest.webmanifest",
+]);
+
+/** Share link tokens: 12 base64url characters. */
+export const SHARE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{12}$/;
 
 /** Lowercase and validate a slug. Returns null if it isn't a usable document name. */
 export function normaliseSlug(input: string): string | null {

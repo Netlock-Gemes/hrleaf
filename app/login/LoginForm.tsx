@@ -6,15 +6,16 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoginState, loginAction } from "@/server/admin-actions";
+import { LoginState, loginAction } from "@/server/auth-actions";
 
 const initial: LoginState = { error: null };
 
-export default function LoginForm() {
+export default function LoginForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(loginAction, initial);
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
+      <input type="hidden" name="next" value={next} />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="username">Username</Label>
         <Input

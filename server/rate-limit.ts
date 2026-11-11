@@ -81,3 +81,24 @@ export async function clearFailedLogins(ip: string): Promise<void> {
   const col = await collection();
   await col.deleteOne({ _id: `ip:${ip}` });
 }
+
+/**
+ * General-purpose fixed-window counter. Returns true while the caller is within
+ * the limit. Used to slow down saves through public share links.
+ */
+export async function withinLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const col = await collection();
+  const now = new Date();
+  const res = await col.findOneAndUpdate(
+    { _id: `rl:${key}`, expires_at: { $gt: now } },
+    { $inc: { count: 1 } },
+    { returnDocument: "after" },
+  );
+  if (res) return res.count <= limit;
+  await col.replaceOne(
+    { _id: `rl:${key}` },
+    { count: 1, expires_at: new Date(now.getTime() + windowMs) },
+    { upsert: true },
+  );
+  return true;
+}

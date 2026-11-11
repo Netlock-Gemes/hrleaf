@@ -20,6 +20,7 @@ import {
   Download,
   Eye,
   FileText,
+  Globe,
   History,
   Link2,
   Loader2,
@@ -28,6 +29,7 @@ import {
   Plus,
   Printer,
   Redo2,
+  Settings2,
   Share2,
   Trash2,
   Undo2,
@@ -57,11 +59,23 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { RecentNote, clearRecent, readPref, recordRecent, writePref } from "@/lib/recent";
-import { restorePrevious, saveDocument } from "@/server/document-actions";
+import {
+  RecentNote,
+  clearDraft,
+  clearRecent,
+  readDraft,
+  readPref,
+  recordRecent,
+  writeDraft,
+  writePref,
+} from "@/lib/recent";
+import { restorePrevious, saveDocument, saveSharedDocument } from "@/server/document-actions";
+import { ShareLink, Visibility } from "@/types";
 
 import NewNoteDialog from "../NewNoteDialog";
+import ShareDialog, { copyText, shareUrl } from "../ShareDialog";
 import SiteHeader from "../SiteHeader";
+import UserMenu, { ViewerInfo } from "../UserMenu";
 
 import { HRLEAF_TRANSFORMERS } from "./custom-transformers/HRLeafTransformers";
 import Editor from "./Editor";
@@ -73,6 +87,12 @@ interface EditorContainerProps {
   updatedAt: string | null;
   previousUpdatedAt: string | null;
   preview?: ReactNode;
+  /** Signed-in person. Null when opened through a public share link. */
+  viewer: ViewerInfo | null;
+  /** Set when editing through a public "can edit" link. */
+  shareToken?: string;
+  visibility?: Visibility;
+  share?: ShareLink | null;
 }
 
 const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
@@ -96,8 +116,17 @@ export default function EditorContainer({
   updatedAt,
   previousUpdatedAt,
   preview,
+  viewer,
+  shareToken,
+  visibility: initialVisibility = "team",
+  share: initialShare = null,
 }: EditorContainerProps) {
   const router = useRouter();
+  const isShared = !!shareToken;
+  const isAdmin = viewer?.role === "admin";
+  const draftKey = shareToken ? `share:${shareToken}` : `note:${slug}`;
+  const [access, setAccess] = useState({ share: initialShare, visibility: initialVisibility });
+  const [shareOpen, setShareOpen] = useState(false);
   const editorRef = useRef<LexicalEditor | null>(null);
 
   const [locked, setLocked] = useState(isReadOnly);
@@ -142,13 +171,13 @@ export default function EditorContainer({
   useEffect(() => {
     const editor = editorRef.current;
     if (editor) lastSavedRef.current = serialise(editor.getEditorState());
-    setRecent(recordRecent(slug));
+    if (!shareToken) setRecent(recordRecent(slug));
     setFocusMode(readPref("focus", false));
     setIsMac(/Mac|iPhone|iPad/.test(navigator.platform));
     // Re-render relative times once a minute.
     const t = setInterval(() => forceTick((n) => n + 1), 60_000);
     return () => clearInterval(t);
-  }, [slug]);
+  }, [slug, shareToken]);
 
   const computeDirty = useCallback(() => {
     const editor = editorRef.current;
@@ -158,10 +187,58 @@ export default function EditorContainer({
 
   const recheckDirty = useDebounce(() => setDirty(computeDirty()), 120);
 
+  // Keep unsaved changes on this device so a crash or closed tab doesn't lose them.
+  const persistDraft = useDebounce(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (computeDirty()) {
+      writeDraft(draftKey, { content: serialise(editor.getEditorState()), base: baseRef.current, at: Date.now() });
+    } else {
+      clearDraft(draftKey);
+    }
+  }, 700);
+
+  // Offer back any unsaved changes left from last time.
+  useEffect(() => {
+    if (locked) return;
+    const draft = readDraft(draftKey);
+    const editor = editorRef.current;
+    if (!draft || !editor) return;
+    if (draft.content === lastSavedRef.current) {
+      clearDraft(draftKey);
+      return;
+    }
+    const changedSince = (draft.base ?? null) !== (baseRef.current ?? null);
+    const id = toast("You have unsaved changes from before", {
+      description: `From ${ago(new Date(draft.at).toISOString())}.${
+        changedSince ? " The note has been saved since then, so restoring replaces that." : ""
+      }`,
+      duration: Infinity,
+      action: {
+        label: "Restore",
+        onClick: () => {
+          try {
+            editor.setEditorState(editor.parseEditorState(draft.content));
+            setDirty(computeDirty());
+            toast.success("Unsaved changes restored. Save to keep them.", { duration: 2500 });
+          } catch {
+            toast.error("Those changes couldn't be read.");
+            clearDraft(draftKey);
+          }
+        },
+      },
+      cancel: { label: "Discard", onClick: () => clearDraft(draftKey) },
+    });
+    return () => void toast.dismiss(id);
+    // Only on first load of this note.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
   const handleEditorStateChange = useCallback(() => {
     if (locked) return;
     recheckDirty();
-  }, [locked, recheckDirty]);
+    persistDraft();
+  }, [locked, recheckDirty, persistDraft]);
 
   /* ---------------------------------- save ---------------------------------- */
 
@@ -175,7 +252,10 @@ export default function EditorContainer({
 
       savingRef.current = true;
       setSaving(true);
-      const result = await saveDocument(slug, state.toJSON(), baseRef.current, force).catch(
+      const result = await (shareToken
+        ? saveSharedDocument(shareToken, state.toJSON(), baseRef.current, force)
+        : saveDocument(slug, state.toJSON(), baseRef.current, force)
+      ).catch(
         () => ({ ok: false as const, reason: "error" as const, message: "Couldn't reach the server." }),
       );
       savingRef.current = false;
@@ -184,6 +264,7 @@ export default function EditorContainer({
       if (result.ok) {
         lastSavedRef.current = serialised;
         baseRef.current = result.updated_at;
+        clearDraft(draftKey);
         setPreviousAt(result.previous_updated_at);
         setDirty(computeDirty());
         setJustSaved(true);
@@ -197,9 +278,26 @@ export default function EditorContainer({
           setConflictOpen(true);
           break;
         case "locked":
+        case "forbidden":
           setLocked(true);
-          toast.error("This note was locked, so your changes can't be saved.", {
-            description: "Copy anything you need before leaving the page.",
+          toast.error(
+            result.reason === "locked"
+              ? "This note was locked, so your changes can't be saved."
+              : "You no longer have access to this note.",
+            { description: "Your changes are kept on this device. Copy anything you need.", duration: 10_000 },
+          );
+          break;
+        case "signed-out":
+          toast.error("You were signed out, so this wasn't saved.", {
+            description: "Your changes are kept on this device. Sign in, and they'll be offered back.",
+            duration: Infinity,
+            action: {
+              label: "Sign in",
+              onClick: () => {
+                allowLeaveRef.current = true;
+                window.location.href = `/login?next=${encodeURIComponent(`/${slug}`)}`;
+              },
+            },
           });
           break;
         default:
@@ -208,7 +306,7 @@ export default function EditorContainer({
           });
       }
     },
-    [slug, locked, computeDirty],
+    [slug, shareToken, draftKey, locked, computeDirty],
   );
 
   /* ------------------------------ keyboard & tab ----------------------------- */
@@ -342,14 +440,7 @@ export default function EditorContainer({
 
   /* --------------------------------- export --------------------------------- */
 
-  const copy = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(label, { duration: 1600 });
-    } catch {
-      toast.error("Couldn't copy. Your browser blocked clipboard access.");
-    }
-  };
+  const copy = copyText;
 
   const downloadMarkdown = () => {
     const editor = editorRef.current;
@@ -382,7 +473,19 @@ export default function EditorContainer({
         <SiteHeader
           sticky={false}
           onNavigate={navigate}
+          homeHref={isShared ? `/s/${shareToken}` : "/"}
           trail={
+            isShared ? (
+              <div className="flex min-w-0 items-center gap-2 px-1.5">
+                <span className="truncate font-mono text-[13px] text-[--text-secondary]">{slug}</span>
+                {dirty && !locked ? (
+                  <span aria-label="Unsaved changes" title="Unsaved changes" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[--leaf]" />
+                ) : null}
+                <span className="hidden shrink-0 items-center gap-1 rounded-full border border-border px-1.5 py-px text-[11px] text-[--text-secondary] sm:flex">
+                  <Globe className="h-3 w-3" aria-hidden /> Shared
+                </span>
+              </div>
+            ) : (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className="group flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left transition-colors duration-150 hover:bg-accent data-[state=open]:bg-accent"
@@ -393,6 +496,12 @@ export default function EditorContainer({
                 </span>
                 {dirty && !locked ? (
                   <span aria-label="Unsaved changes" title="Unsaved changes" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[--leaf]" />
+                ) : null}
+                {isAdmin && access.visibility === "private" ? (
+                  <Lock className="h-3 w-3 shrink-0 text-[--text-tertiary]" aria-label="Only you can see this note" />
+                ) : null}
+                {isAdmin && access.share ? (
+                  <Globe className="h-3 w-3 shrink-0 text-[--leaf-strong]" aria-label="Has a public share link" />
                 ) : null}
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[--text-tertiary]" aria-hidden />
               </DropdownMenuTrigger>
@@ -426,6 +535,7 @@ export default function EditorContainer({
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
+            )
           }
         >
           {locked ? null : (
@@ -464,32 +574,55 @@ export default function EditorContainer({
           )}
 
           {/* Share (folds into the More menu on phones) */}
+          {isShared ? null : (
           <DropdownMenu>
             <DropdownMenuTrigger className="hidden h-8 items-center justify-center gap-1.5 rounded-md px-2 text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground data-[state=open]:bg-accent sm:flex" aria-label="Share">
               <Share2 className="h-4 w-4" aria-hidden />
               <span className="hidden text-[13px] sm:inline">Share</span>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem className="gap-2" onSelect={() => copy(`${location.origin}/${slug}`, "Edit link copied")}>
+            <DropdownMenuContent align="end" className="w-72">
+              {isAdmin ? (
+                <>
+                  <DropdownMenuItem className="gap-2" onSelect={() => setShareOpen(true)}>
+                    <Settings2 className="h-4 w-4" aria-hidden />
+                    <div className="flex flex-col">
+                      <span>Share settings…</span>
+                      <span className="text-[12px] text-muted-foreground">
+                        {access.share
+                          ? `Public link on · ${access.share.mode === "write" ? "can edit" : "read only"}`
+                          : access.visibility === "private"
+                            ? "Only you · no public link"
+                            : "Team · no public link"}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  {access.share ? (
+                    <DropdownMenuItem className="gap-2" onSelect={() => copy(shareUrl(access.share!.token), "Public link copied")}>
+                      <Globe className="h-4 w-4" aria-hidden />
+                      <div className="flex flex-col">
+                        <span>Copy public link</span>
+                        <span className="text-[12px] text-muted-foreground">No account needed</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <DropdownMenuItem className="gap-2" onSelect={() => copy(`${location.origin}/${slug}`, "Link copied")}>
                 <Link2 className="h-4 w-4" aria-hidden />
                 <div className="flex flex-col">
-                  <span>Copy edit link</span>
-                  <span className="text-[12px] text-muted-foreground">Anyone with it can edit</span>
+                  <span>Copy link</span>
+                  <span className="text-[12px] text-muted-foreground">
+                    {access.visibility === "private" ? "Only you can open it" : "Works for signed-in members"}
+                  </span>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" onSelect={() => copy(`${location.origin}/${slug}/view`, "Read-only link copied")}>
-                <Eye className="h-4 w-4" aria-hidden />
-                <div className="flex flex-col">
-                  <span>Copy read-only link</span>
-                  <span className="text-[12px] text-muted-foreground">Shows the last saved version</span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2" onSelect={() => window.open(`/${slug}/view`, "_blank", "noopener")}>
                 <FileText className="h-4 w-4" aria-hidden /> Open read-only view
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
 
           {/* More */}
           <DropdownMenu>
@@ -497,26 +630,39 @@ export default function EditorContainer({
               <MoreHorizontal className="h-4 w-4" aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => copy(`${location.origin}/${slug}`, "Edit link copied")}>
-                <Link2 className="h-4 w-4" aria-hidden /> Copy edit link
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => copy(`${location.origin}/${slug}/view`, "Read-only link copied")}>
-                <Eye className="h-4 w-4" aria-hidden /> Copy read-only link
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="sm:hidden" />
-              <DropdownMenuItem
-                className="gap-2"
-                disabled={!previousAt || locked}
-                onSelect={() => setRestoreOpen(true)}
-              >
-                <History className="h-4 w-4" aria-hidden />
-                <div className="flex flex-col">
-                  <span>Restore previous version</span>
-                  <span className="text-[12px] text-muted-foreground">
-                    {locked ? "Unavailable while locked" : previousAt ? `Saved ${ago(previousAt)}` : "Appears after your second save"}
-                  </span>
-                </div>
-              </DropdownMenuItem>
+              {isShared ? (
+                <DropdownMenuItem className="gap-2" onSelect={() => copy(location.href, "Link copied")}>
+                  <Link2 className="h-4 w-4" aria-hidden /> Copy link
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  {isAdmin ? (
+                    <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => setShareOpen(true)}>
+                      <Settings2 className="h-4 w-4" aria-hidden /> Share settings…
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => copy(`${location.origin}/${slug}`, "Link copied")}>
+                    <Link2 className="h-4 w-4" aria-hidden /> Copy link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => window.open(`/${slug}/view`, "_blank", "noopener")}>
+                    <Eye className="h-4 w-4" aria-hidden /> Open read-only view
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="sm:hidden" />
+                  <DropdownMenuItem
+                    className="gap-2"
+                    disabled={!previousAt || locked}
+                    onSelect={() => setRestoreOpen(true)}
+                  >
+                    <History className="h-4 w-4" aria-hidden />
+                    <div className="flex flex-col">
+                      <span>Restore previous version</span>
+                      <span className="text-[12px] text-muted-foreground">
+                        {locked ? "Unavailable while locked" : previousAt ? `Saved ${ago(previousAt)}` : "Appears after your second save"}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2" onSelect={downloadMarkdown}>
                 <Download className="h-4 w-4" aria-hidden /> Download Markdown
@@ -532,16 +678,22 @@ export default function EditorContainer({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <button
-            type="button"
-            onClick={() => setNewOpen(true)}
-            className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground"
-            aria-label="New note"
-            title="New note"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            <span className="hidden md:inline">New</span>
-          </button>
+          {viewer ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setNewOpen(true)}
+                // On phones, "New note" lives in the note-name menu to leave room for the name.
+                className="hidden h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground sm:flex"
+                aria-label="New note"
+                title="New note"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                <span className="hidden md:inline">New</span>
+              </button>
+              <UserMenu viewer={viewer} className="ml-0.5" />
+            </>
+          ) : null}
         </SiteHeader>
       </div>
 
@@ -554,7 +706,17 @@ export default function EditorContainer({
         preview={preview}
       />
 
-      <NewNoteDialog open={newOpen} onOpenChange={setNewOpen} onNavigate={navigate} />
+      {viewer ? <NewNoteDialog open={newOpen} onOpenChange={setNewOpen} onNavigate={navigate} /> : null}
+      {isAdmin ? (
+        <ShareDialog
+          slug={slug}
+          share={access.share}
+          visibility={access.visibility}
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          onChange={setAccess}
+        />
+      ) : null}
 
       {/* Unsaved changes on navigation */}
       <AlertDialog open={leaveTo !== null} onOpenChange={(o) => !o && setLeaveTo(null)}>
