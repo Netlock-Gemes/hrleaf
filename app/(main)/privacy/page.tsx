@@ -4,8 +4,13 @@ import { NewNoteButton } from "@/app/components/NewNoteDialog";
 import SiteHeader from "@/app/components/SiteHeader";
 
 export const metadata = {
-  title: "Privacy Policy | HRLeaf",
-  description: "Privacy Policy for HRLeaf.",
+  title: "Privacy Policy",
+  description: "How HRLeaf handles notes, links and the little data it keeps.",
+  openGraph: {
+    title: "Privacy Policy",
+    description: "How HRLeaf handles notes, links and the little data it keeps.",
+    url: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

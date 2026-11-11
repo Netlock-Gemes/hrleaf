@@ -7,8 +7,9 @@ import { notFound } from "next/navigation";
 
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
 import SiteHeader from "@/app/components/SiteHeader";
+import { noteSummary } from "@/lib/site";
 import { renderDocumentStatic } from "@/lib/static-render";
-import { getEditorDocument } from "@/server/document-service";
+import { getEditorDocument, getNoteFacts } from "@/server/document-service";
 import { normaliseSlug } from "@/server/document-utils";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,18 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: raw } = await params;
+  const slug = normaliseSlug(raw) ?? raw;
+  const facts = await getNoteFacts(slug).catch(() => null);
+  const description = facts
+    ? `Read-only view of a private HRLeaf note. ${noteSummary({ ...facts, read_only: false }).join(" · ")}.`
+    : "Read-only view of a private HRLeaf note.";
   return {
-    title: `${normaliseSlug(slug) ?? slug} · HRLeaf`,
-    robots: { index: false, follow: false },
+    title: `${slug} (read only)`,
+    description,
+    alternates: { canonical: `/${slug}/view` },
+    openGraph: { type: "article", title: `/${slug}`, description, url: `/${slug}/view` },
+    twitter: { card: "summary_large_image", title: `/${slug} (read only)`, description },
   };
 }
 

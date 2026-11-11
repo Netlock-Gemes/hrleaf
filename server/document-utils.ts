@@ -114,3 +114,17 @@ export function generateRandomSlug(): string {
 export function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/** Word count across all text in a document. */
+export function countWords(content: object | null | undefined): number {
+  if (!content) return 0;
+  let words = 0;
+  const walk = (node: LexNode) => {
+    if (node.type === "text" && node.text) {
+      words += node.text.split(/\s+/).filter(Boolean).length;
+    }
+    node.children?.forEach(walk);
+  };
+  ((content as { root?: LexNode }).root?.children ?? []).forEach(walk);
+  return words;
+}

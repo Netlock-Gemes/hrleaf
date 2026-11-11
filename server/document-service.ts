@@ -12,7 +12,7 @@ import {
   EditorDocument,
 } from "@/types";
 
-import { derivedFields, escapeRegex, generateRandomSlug } from "./document-utils";
+import { countWords, derivedFields, escapeRegex, generateRandomSlug } from "./document-utils";
 import { documents } from "./mongo-config";
 
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024; // 2 MB of editor JSON
@@ -49,6 +49,17 @@ export const getEditorDocument = cache(
     };
   },
 );
+
+/** Content-free facts about a note, for titles and link previews. */
+export async function getNoteFacts(slug: string) {
+  const doc = await getEditorDocument(slug);
+  return {
+    exists: !!doc && !!doc.content,
+    words: countWords(doc?.content),
+    updated_at: doc?.updated_at ?? null,
+    read_only: doc?.read_only ?? false,
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /* Saving                                                              */

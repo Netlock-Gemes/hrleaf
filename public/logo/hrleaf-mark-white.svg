@@ -1,0 +1,1 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>HRLeaf</title><defs><mask id="hrleaf-cut"><path d="M50 4H96V50A46 46 0 0 1 50 96H4V50A46 46 0 0 1 50 4Z" fill="#fff"/><path d="M4 96 70 30" stroke="#000" stroke-width="9" stroke-linecap="round"/></mask></defs><rect width="100" height="100" fill="#ffffff" mask="url(#hrleaf-cut)"/></svg>

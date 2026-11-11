@@ -1,7 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+
+import { LogoMark, Wordmark } from "./Logo";
 
 interface SiteHeaderProps {
   /** Shown after the wordmark, e.g. the current document name. */
@@ -42,18 +43,11 @@ export default function SiteHeader({
                 onNavigate(homeHref);
               }
             }}
-            className="flex shrink-0 items-center gap-2 rounded-md py-1 pr-1 text-[15px] font-semibold tracking-[-0.01em] text-foreground"
+            className="flex shrink-0 items-center gap-2 rounded-md py-1 pr-1 text-[15px]"
             aria-label="HRLeaf home"
           >
-            <Image
-              src="/logo/leaf-96.png"
-              alt=""
-              width={22}
-              height={22}
-              priority
-              className="h-[22px] w-[22px]"
-            />
-            <span className="hidden min-[400px]:inline">HRLeaf</span>
+            <LogoMark size={20} />
+            <Wordmark className="hidden min-[400px]:inline" />
           </Link>
           {trail ? (
             <>

@@ -1,8 +1,9 @@
 import { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { noteSummary } from "@/lib/site";
 import { renderDocumentStatic } from "@/lib/static-render";
-import { getEditorDocument } from "@/server/document-service";
+import { getEditorDocument, getNoteFacts } from "@/server/document-service";
 import { normaliseSlug } from "@/server/document-utils";
 
 import EditorContainer from "../../components/editor/EditorContainer";
@@ -12,8 +13,19 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  return { title: `${normaliseSlug(slug) ?? slug} · HRLeaf` };
+  const { slug: raw } = await params;
+  const slug = normaliseSlug(raw) ?? raw;
+  const facts = await getNoteFacts(slug).catch(() => null);
+  const description = facts
+    ? `A private HRLeaf note. ${noteSummary(facts).join(" · ")}.`
+    : "A private HRLeaf note.";
+  return {
+    title: slug,
+    description,
+    alternates: { canonical: `/${slug}` },
+    openGraph: { type: "article", title: `/${slug}`, description, url: `/${slug}` },
+    twitter: { card: "summary_large_image", title: `/${slug}`, description },
+  };
 }
 
 export default async function EditorPage({ params }: Props) {

@@ -1,6 +1,6 @@
 # HRLeaf
 
-A minimalist, browser-based rich text editor. Open any URL, write, press **Save**.
+A private notebook. Every note lives at its own link and is shared only with the people you send it to. HRLeaf is not a public service: every page asks search engines not to index it.
 
 - Visit `/` to get a fresh note with a random name, or go to `/anything-you-want`
 - Write with Markdown shortcuts, the `/` command menu, or the formatting toolbar
@@ -62,6 +62,13 @@ The admin dashboard (its route is set in `middleware.ts`) is protected by a sing
 - Per note: lock/unlock, rename, restore previous version, read-only view, delete
 - Bulk select: lock, unlock or delete many notes at once
 - **Delete empty**: removes every empty, unlocked note in one go
+
+## Brand
+
+- **Mark:** one solid leaf with one cut. The cut is both the leaf's midrib and the `/` of a note's address (`hrleaf/your-note`). Files: `public/logo/hrleaf-mark*.svg` (green, dark, white) and `hrleaf-mark-1024.png`; React component in `app/components/Logo.tsx`.
+- **Wordmark:** "HR" regular + "Leaf" semibold, Geist.
+- **Colours:** leaf `#4cc47e` on warm near-black `#121110`, ink `#ece8e1`.
+- **Link previews:** every route has its own Open Graph image, generated on the server (`opengraph-image.tsx` files, shared layout in `lib/og.tsx`). Note previews show the note's name, last update and word count, never its text.
 
 ## Running locally
 
