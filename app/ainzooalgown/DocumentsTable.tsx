@@ -149,6 +149,23 @@ export default function DocumentsTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  // Keyboard: "/" focuses search, Escape clears the selection.
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === "Escape" && !typing) {
+        setSelected(new Set());
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const toggleSort = (key: AdminSortKey) =>
     setParams(
       query.sort === key ? { desc: !query.desc, page: 0 } : { sort: key, desc: key !== "slug", page: 0 },
@@ -183,8 +200,9 @@ export default function DocumentsTable({
 
   return (
     <section aria-label="All documents">
+      <div className="panel overflow-clip">
       {/* Toolbar */}
-      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center">
+      <div className="flex flex-col gap-2 border-b border-border p-3 lg:flex-row lg:items-center">
         <form
           className="relative flex-1"
           onSubmit={(e) => {
@@ -204,15 +222,27 @@ export default function DocumentsTable({
             />
           )}
           <input
+            ref={searchRef}
             type="search"
             value={search}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSearch("");
+                e.currentTarget.blur();
+              }
+            }}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search, or type a name and press Enter to open it"
+            placeholder="Search or open a note…"
             aria-label="Search documents"
             spellCheck={false}
             autoCapitalize="none"
-            className="h-10 w-full rounded-lg border border-input bg-[--surface-dark] pl-9 pr-3 font-mono text-[13px] text-foreground placeholder:font-sans placeholder:text-[--text-tertiary] focus-visible:border-[--leaf] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-20]"
+            className="h-10 w-full rounded-lg border border-input bg-[--surface-dark] pl-9 pr-10 font-mono text-[13px] text-foreground placeholder:font-sans placeholder:text-[--text-tertiary] focus-visible:border-[--leaf] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-20]"
           />
+          {search ? null : (
+            <kbd className="kbd pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex" aria-hidden>
+              /
+            </kbd>
+          )}
         </form>
 
         <div className="flex items-center gap-2">
@@ -251,10 +281,7 @@ export default function DocumentsTable({
       </div>
 
       {/* Table */}
-      <div
-        className={`overflow-hidden rounded-xl border border-border bg-card transition-opacity duration-150 ${navPending ? "opacity-60" : ""}`}
-        aria-busy={navPending}
-      >
+      <div className={`transition-opacity duration-150 ${navPending ? "opacity-60" : ""}`} aria-busy={navPending}>
         <table className="w-full table-fixed border-collapse text-sm">
           <colgroup>
             <col className="w-11" />
@@ -265,7 +292,7 @@ export default function DocumentsTable({
             <col className="w-[5.25rem] sm:w-[7.5rem]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-border text-left text-[12px] text-muted-foreground">
+            <tr className="text-left text-[12px] text-muted-foreground [&>th]:sticky [&>th]:top-14 [&>th]:z-10 [&>th]:bg-[hsl(40_5%_9%/0.94)] [&>th]:shadow-[inset_0_-1px_0_hsl(var(--border))] [&>th]:backdrop-blur-sm">
               <th className="py-2.5 pl-4 pr-1">
                 <Checkbox
                   checked={allSelected}
@@ -308,14 +335,14 @@ export default function DocumentsTable({
                     isSelected ? "bg-[--primary-10]" : "hover:bg-white/[0.025]"
                   }`}
                 >
-                  <td className="py-2.5 pl-4 pr-1 align-top">
+                  <td className="py-3 pl-4 pr-1 align-top">
                     <Checkbox checked={isSelected} label={`Select ${d.slug}`} onChange={() => toggleRow(d.slug)} />
                   </td>
-                  <td className="py-2.5 pl-1 pr-3">
+                  <td className="py-3 pl-1 pr-3">
                     <div className="flex min-w-0 items-center gap-2">
                       <Link
                         href={`/${d.slug}`}
-                        className="min-w-0 truncate font-mono text-[13px] text-foreground underline-offset-4 hover:underline"
+                        className="min-w-0 truncate font-mono text-[13px] font-medium text-foreground underline-offset-4 decoration-[--text-tertiary] hover:underline"
                       >
                         {d.slug}
                       </Link>
@@ -349,7 +376,7 @@ export default function DocumentsTable({
                     {relative(d.updated_at, now)}
                   </td>
                   <td className="px-2 py-1.5">
-                    <div className="flex items-center justify-end gap-0.5">
+                    <div className="flex items-center justify-end gap-0.5 transition-opacity duration-150 md:opacity-55 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                       <IconButton
                         label={d.read_only ? `Unlock ${d.slug}` : `Lock ${d.slug}`}
                         onClick={() => run(() => setLockedAction([d.slug], !d.read_only))}
@@ -424,30 +451,38 @@ export default function DocumentsTable({
         </table>
       </div>
 
-      {/* Pagination */}
-      {list.total > list.pageSize ? (
-        <nav aria-label="Pagination" className="tabular mt-4 flex items-center justify-between text-[13px] text-muted-foreground">
+      {/* Footer + pagination */}
+      {list.total > 0 ? (
+        <nav aria-label="Pagination" className="tabular flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-[12.5px] text-muted-foreground">
           <span>
-            {query.page * list.pageSize + 1}–{Math.min(list.total, (query.page + 1) * list.pageSize)} of {list.total}
+            Showing <span className="text-foreground">{query.page * list.pageSize + 1}–{Math.min(list.total, (query.page + 1) * list.pageSize)}</span> of {list.total}
           </span>
+          {list.total > list.pageSize ? (
           <div className="flex gap-1">
             <button
               onClick={() => setParams({ page: query.page - 1 })}
               disabled={query.page === 0 || navPending}
-              className="flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-foreground transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
+              className="flex h-7 items-center gap-1 rounded-md border border-border px-2 text-foreground transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden /> Previous
             </button>
             <button
               onClick={() => setParams({ page: query.page + 1 })}
               disabled={query.page >= pageCount - 1 || navPending}
-              className="flex h-8 items-center gap-1 rounded-md border border-border px-2.5 text-foreground transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
+              className="flex h-7 items-center gap-1 rounded-md border border-border px-2 text-foreground transition-colors duration-150 hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
             >
               Next <ChevronRight className="h-4 w-4" aria-hidden />
             </button>
           </div>
+          ) : (
+            <span className="hidden items-center gap-1.5 text-[--text-tertiary] sm:flex">
+              <kbd className="kbd">/</kbd> search
+              <kbd className="kbd ml-2">N</kbd> new note
+            </span>
+          )}
         </nav>
       ) : null}
+      </div>
 
       {/* Bulk action bar */}
       <div

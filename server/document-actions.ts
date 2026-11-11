@@ -5,8 +5,13 @@
  * Everything else lives in document-service.ts, which is server-only.
  */
 
-import { restorePreviousVersion, saveDocumentContent } from "./document-service";
-import { normaliseSlug } from "./document-utils";
+import {
+  restorePreviousVersion,
+  saveDocumentContent,
+  slugExists,
+  suggestAvailableSlugs,
+} from "./document-service";
+import { RESERVED_SLUGS, normaliseSlug } from "./document-utils";
 
 export type SaveResult =
   | { ok: true; updated_at: string | null; previous_updated_at: string | null }
@@ -77,5 +82,33 @@ export async function restorePrevious(
   } catch (err) {
     console.error("[restorePrevious]", err);
     return { ok: false, message: "Couldn't reach the server." };
+  }
+}
+
+export type NameCheck =
+  | { status: "available"; slug: string }
+  | { status: "exists"; slug: string }
+  | { status: "invalid"; message: string };
+
+/** Used by the "New note" dialog to give live feedback on a name. */
+export async function checkNoteName(input: string): Promise<NameCheck> {
+  const slug = normaliseSlug(input);
+  if (!slug) {
+    return { status: "invalid", message: "Use lowercase letters, numbers and dashes (up to 64)." };
+  }
+  if (RESERVED_SLUGS.has(slug)) return { status: "invalid", message: "That name is reserved." };
+  try {
+    return (await slugExists(slug)) ? { status: "exists", slug } : { status: "available", slug };
+  } catch {
+    // If the check fails, still let them go there; the page itself will load or create it.
+    return { status: "available", slug };
+  }
+}
+
+export async function suggestNoteNames(): Promise<string[]> {
+  try {
+    return await suggestAvailableSlugs(4);
+  } catch {
+    return [];
   }
 }

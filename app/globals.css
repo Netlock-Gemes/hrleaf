@@ -217,6 +217,18 @@ body {
     }
   }
 
+  /* Raised surface for admin panels: hairline, top highlight, soft offset shadow */
+  .panel {
+    @apply rounded-xl border border-white/[0.07] bg-card;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035),
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 12px 32px -20px rgba(0, 0, 0, 0.7);
+  }
+
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-white/10 bg-white/[0.04] px-1 font-sans text-[11px] font-medium leading-none text-[--text-tertiary];
+  }
+
   .admin-checkbox {
     @apply h-4 w-4 cursor-pointer rounded align-middle;
     accent-color: var(--leaf);

@@ -19,7 +19,7 @@ import {
   restorePreviousVersion,
   setReadOnlyMany,
 } from "./document-service";
-import { normaliseSlug } from "./document-utils";
+import { RESERVED_SLUGS, normaliseSlug } from "./document-utils";
 import { clearFailedLogins, clientIp, loginRetryAfter, recordFailedLogin } from "./rate-limit";
 
 export type LoginState = { error: string | null; username?: string };
@@ -140,7 +140,7 @@ export async function renameDocumentAction(from: string, to: string) {
     if (!a) return { ok: false, message: "Invalid note." };
     if (!b) return { ok: false, message: "Use lowercase letters, numbers and dashes (up to 64)." };
     if (a === b) return { ok: false, message: "That's already its name." };
-    if (["ainzooalgown", "privacy", "api", "robots.txt"].includes(b)) {
+    if (RESERVED_SLUGS.has(b)) {
       return { ok: false, message: "That name is reserved." };
     }
     const out = await renameDocument(a, b);

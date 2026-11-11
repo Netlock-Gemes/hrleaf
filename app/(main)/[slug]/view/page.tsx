@@ -5,6 +5,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { NewNoteButton } from "@/app/components/NewNoteDialog";
 import SiteHeader from "@/app/components/SiteHeader";
 import { renderDocumentStatic } from "@/lib/static-render";
 import { getEditorDocument } from "@/server/document-service";
@@ -52,6 +53,7 @@ export default async function ViewPage({ params }: Props) {
             Edit
           </Link>
         )}
+        <NewNoteButton />
       </SiteHeader>
       <div className="editor-root">
         <article className="editor-area cursor-auto">

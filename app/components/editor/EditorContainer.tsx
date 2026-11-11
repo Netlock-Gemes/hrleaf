@@ -1,7 +1,18 @@
 "use client";
 
 import { $convertToMarkdownString } from "@lexical/markdown";
-import { $createParagraphNode, $getRoot, EditorState, LexicalEditor } from "lexical";
+import { mergeRegister } from "@lexical/utils";
+import {
+  $createParagraphNode,
+  $getRoot,
+  CAN_REDO_COMMAND,
+  CAN_UNDO_COMMAND,
+  COMMAND_PRIORITY_LOW,
+  EditorState,
+  LexicalEditor,
+  REDO_COMMAND,
+  UNDO_COMMAND,
+} from "lexical";
 import {
   Check,
   ChevronDown,
@@ -16,8 +27,10 @@ import {
   MoreHorizontal,
   Plus,
   Printer,
+  Redo2,
   Share2,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
@@ -47,6 +60,7 @@ import {
 import { RecentNote, clearRecent, readPref, recordRecent, writePref } from "@/lib/recent";
 import { restorePrevious, saveDocument } from "@/server/document-actions";
 
+import NewNoteDialog from "../NewNoteDialog";
 import SiteHeader from "../SiteHeader";
 
 import { HRLEAF_TRANSFORMERS } from "./custom-transformers/HRLeafTransformers";
@@ -102,6 +116,19 @@ export default function EditorContainer({
   const [focusMode, setFocusMode] = useState(false);
   const [typing, setTyping] = useState(false);
   const [isMac, setIsMac] = useState(true);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
+
+  // Track undo/redo availability so the header buttons can enable/disable.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    return mergeRegister(
+      editor.registerCommand(CAN_UNDO_COMMAND, (v) => (setCanUndo(v), false), COMMAND_PRIORITY_LOW),
+      editor.registerCommand(CAN_REDO_COMMAND, (v) => (setCanRedo(v), false), COMMAND_PRIORITY_LOW),
+    );
+  }, [slug]);
 
   const baseRef = useRef<string | null>(updatedAt);
   const lastSavedRef = useRef<string | null>(null);
@@ -383,7 +410,7 @@ export default function EditorContainer({
                   ))
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => navigate("/")} className="gap-2">
+                <DropdownMenuItem onSelect={() => setNewOpen(true)} className="gap-2">
                   <Plus className="h-3.5 w-3.5" aria-hidden /> New note
                 </DropdownMenuItem>
                 {otherRecent.length ? (
@@ -401,6 +428,25 @@ export default function EditorContainer({
             </DropdownMenu>
           }
         >
+          {locked ? null : (
+            <div className="flex items-center" role="group" aria-label="History">
+              <HistoryButton
+                label={`Undo (${modKey}Z)`}
+                disabled={!canUndo}
+                onClick={() => editorRef.current?.dispatchCommand(UNDO_COMMAND, undefined)}
+              >
+                <Undo2 className="h-4 w-4" aria-hidden />
+              </HistoryButton>
+              <HistoryButton
+                label={`Redo (${isMac ? "⌘⇧Z" : "Ctrl+Y"})`}
+                disabled={!canRedo}
+                onClick={() => editorRef.current?.dispatchCommand(REDO_COMMAND, undefined)}
+              >
+                <Redo2 className="h-4 w-4" aria-hidden />
+              </HistoryButton>
+            </div>
+          )}
+
           {locked ? (
             <span className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-[--text-secondary]">
               <Lock className="h-3.5 w-3.5" aria-hidden />
@@ -417,9 +463,9 @@ export default function EditorContainer({
             />
           )}
 
-          {/* Share */}
+          {/* Share (folds into the More menu on phones) */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground data-[state=open]:bg-accent sm:w-auto sm:gap-1.5 sm:px-2" aria-label="Share">
+            <DropdownMenuTrigger className="hidden h-8 items-center justify-center gap-1.5 rounded-md px-2 text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground data-[state=open]:bg-accent sm:flex" aria-label="Share">
               <Share2 className="h-4 w-4" aria-hidden />
               <span className="hidden text-[13px] sm:inline">Share</span>
             </DropdownMenuTrigger>
@@ -451,6 +497,13 @@ export default function EditorContainer({
               <MoreHorizontal className="h-4 w-4" aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => copy(`${location.origin}/${slug}`, "Edit link copied")}>
+                <Link2 className="h-4 w-4" aria-hidden /> Copy edit link
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => copy(`${location.origin}/${slug}/view`, "Read-only link copied")}>
+                <Eye className="h-4 w-4" aria-hidden /> Copy read-only link
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="sm:hidden" />
               <DropdownMenuItem
                 className="gap-2"
                 disabled={!previousAt || locked}
@@ -481,7 +534,7 @@ export default function EditorContainer({
 
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() => setNewOpen(true)}
             className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground"
             aria-label="New note"
             title="New note"
@@ -500,6 +553,8 @@ export default function EditorContainer({
         onEditorStateChange={handleEditorStateChange}
         preview={preview}
       />
+
+      <NewNoteDialog open={newOpen} onOpenChange={setNewOpen} onNavigate={navigate} />
 
       {/* Unsaved changes on navigation */}
       <AlertDialog open={leaveTo !== null} onOpenChange={(o) => !o && setLeaveTo(null)}>
@@ -595,6 +650,33 @@ export default function EditorContainer({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function HistoryButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      // Keep the caret where it is so undo acts on the text, and the phone keyboard stays up.
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className="flex h-8 w-8 items-center justify-center rounded-md text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:text-[--text-disabled]"
+    >
+      {children}
+    </button>
   );
 }
 

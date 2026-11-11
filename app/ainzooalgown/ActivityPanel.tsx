@@ -44,10 +44,10 @@ export default function ActivityPanel({ stats }: { stats: AdminStats }) {
   return (
     <section
       aria-label="Activity"
-      className="mb-8 grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+      className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
     >
       {/* Activity chart */}
-      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="panel p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium">Notes {label} per day</h2>
@@ -159,7 +159,7 @@ export default function ActivityPanel({ stats }: { stats: AdminStats }) {
       </div>
 
       {/* Largest notes */}
-      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="panel p-4 sm:p-5">
         <div className="mb-4">
           <h2 className="text-sm font-medium">Largest notes</h2>
           <p className="tabular mt-0.5 text-[13px] text-muted-foreground">

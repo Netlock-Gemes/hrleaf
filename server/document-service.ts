@@ -345,6 +345,24 @@ export async function renameDocument(from: string, to: string): Promise<RenameOu
 /* Misc                                                                */
 /* ------------------------------------------------------------------ */
 
+/** Does a note with this slug exist? */
+export async function slugExists(slug: string): Promise<boolean> {
+  const col = await documents();
+  return (await col.countDocuments({ slug }, { limit: 1 })) > 0;
+}
+
+/** Several unused random names, found with one query. */
+export async function suggestAvailableSlugs(count: number): Promise<string[]> {
+  const col = await documents();
+  const candidates = [...new Set(Array.from({ length: count * 3 }, generateRandomSlug))].filter(
+    (s) => s.length <= 40,
+  );
+  const taken = new Set(
+    (await col.find({ slug: { $in: candidates } }, { projection: { slug: 1 } }).toArray()).map((d) => d.slug),
+  );
+  return candidates.filter((s) => !taken.has(s)).slice(0, count);
+}
+
 /** Pick an unused random slug, checking several candidates in one query. */
 export async function findAvailableSlug(): Promise<string> {
   const col = await documents();

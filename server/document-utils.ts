@@ -8,6 +8,9 @@ import {
 
 export const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
+/** Names that are real routes, so they can't be notes. */
+export const RESERVED_SLUGS = new Set(["ainzooalgown", "privacy", "api", "robots.txt", "_next"]);
+
 /** Lowercase and validate a slug. Returns null if it isn't a usable document name. */
 export function normaliseSlug(input: string): string | null {
   let slug: string;

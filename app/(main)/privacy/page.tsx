@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NewNoteButton } from "@/app/components/NewNoteDialog";
 import SiteHeader from "@/app/components/SiteHeader";
 
 export const metadata = {
@@ -10,7 +11,9 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen">
-      <SiteHeader />
+      <SiteHeader>
+        <NewNoteButton />
+      </SiteHeader>
       <div className="mx-auto max-w-[44rem] px-5 py-12 sm:px-8 lg:py-20">
         <header className="mb-12">
           <Link
