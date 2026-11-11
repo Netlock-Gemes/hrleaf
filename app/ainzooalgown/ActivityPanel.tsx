@@ -116,7 +116,7 @@ export default function ActivityPanel({ stats, storage }: { stats: AdminStats; s
 
           {hover !== null ? (
             <div
-              className="pointer-events-none absolute top-0 z-10 -translate-y-[calc(100%+6px)] whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[12px] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.6)]"
+              className="pointer-events-none absolute top-0 z-10 -translate-y-[calc(100%+6px)] whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[12px] shadow-[--shadow-pop]"
               style={{
                 left: `${((hover + 0.5) / values.length) * 100}%`,
                 // Keep the tooltip inside the card near either edge.

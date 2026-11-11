@@ -155,9 +155,9 @@ export default function NewNoteDialog({ open, onOpenChange, onNavigate }: NewNot
             ) : check?.status === "available" ? (
               <span className="text-[--leaf-strong]">Available</span>
             ) : check?.status === "exists" ? (
-              <span className="text-[hsl(38_85%_68%)]">A note with this name already exists. You can open it.</span>
+              <span className="text-[--warn-text]">A note with this name already exists. You can open it.</span>
             ) : check?.status === "invalid" ? (
-              <span className="text-[hsl(2_80%_72%)]">{check.message}</span>
+              <span className="text-[--danger-text]">{check.message}</span>
             ) : null}
           </p>
 
@@ -177,7 +177,7 @@ export default function NewNoteDialog({ open, onOpenChange, onNavigate }: NewNot
             <div className="flex min-h-[4.5rem] flex-wrap content-start gap-1.5">
               {suggestions.length === 0 && loadingSuggestions
                 ? [0, 1, 2, 3].map((i) => (
-                    <span key={i} className="h-8 w-32 animate-pulse rounded-md bg-[--surface-dark]" />
+                    <span key={i} className="h-8 w-32 motion-safe:animate-pulse rounded-md bg-[--surface-dark]" />
                   ))
                 : suggestions.map((s) => (
                     <button
@@ -214,7 +214,7 @@ export default function NewNoteDialog({ open, onOpenChange, onNavigate }: NewNot
               <button
                 type="submit"
                 disabled={!ready || going}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-[--leaf] px-3.5 text-[13px] font-medium text-[#0f1a13] transition-[background-color,opacity] duration-150 hover:bg-[--leaf-strong] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-9 items-center gap-1.5 rounded-md bg-[--leaf] px-3.5 text-[13px] font-medium text-[--on-leaf] transition-[background-color,opacity] duration-150 hover:bg-[--leaf-hover] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {check?.status === "exists" ? (
                   <>
@@ -249,6 +249,13 @@ export function NewNoteButton({
 }) {
   const [open, setOpen] = useState(false);
 
+  // "New note…" from the command palette.
+  useEffect(() => {
+    const onNew = () => setOpen(true);
+    window.addEventListener("hrleaf:new-note", onNew);
+    return () => window.removeEventListener("hrleaf:new-note", onNew);
+  }, []);
+
   useEffect(() => {
     if (!shortcut) return;
     const onKey = (e: KeyboardEvent) => {
@@ -272,14 +279,14 @@ export function NewNoteButton({
         title={shortcut ? "New note (N)" : "New note"}
         className={
           variant === "primary"
-            ? "flex h-9 items-center gap-1.5 rounded-lg bg-[--leaf] px-3 text-[13px] font-medium text-[#0f1a13] shadow-[0_1px_0_rgba(255,255,255,0.22)_inset,0_6px_16px_-8px_rgba(76,196,126,0.55)] transition-colors duration-150 hover:bg-[--leaf-strong]"
+            ? "flex h-9 items-center gap-1.5 rounded-lg bg-[--leaf] px-3 text-[13px] font-medium text-[--on-leaf] shadow-[--shadow-leaf] transition-colors duration-150 hover:bg-[--leaf-hover]"
             : "flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:bg-accent hover:text-foreground"
         }
       >
         <Plus className="h-4 w-4" aria-hidden />
         <span className={variant === "primary" ? "" : "hidden md:inline"}>{label}</span>
         {variant === "primary" && shortcut ? (
-          <kbd className="ml-1 hidden rounded bg-black/20 px-1.5 text-[11px] font-semibold leading-5 text-[#0f1a13]/90 sm:inline">
+          <kbd className="ml-1 hidden rounded bg-black/15 px-1.5 text-[11px] font-semibold leading-5 text-[--on-leaf] opacity-90 sm:inline">
             N
           </kbd>
         ) : null}

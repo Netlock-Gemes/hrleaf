@@ -7,7 +7,7 @@ export const metadata = { title: "Not found" };
 /** One 404 for everything: missing pages, notes you can't open, and the admin area for non-admins. */
 export default function NotFound() {
   return (
-    <main className="flex min-h-[100svh] items-center justify-center px-5 py-12">
+    <main id="main" className="flex min-h-[100svh] items-center justify-center px-5 py-12">
       <div className="flex w-full max-w-[24rem] flex-col items-start gap-6">
         <LogoMark size={30} />
         <div>

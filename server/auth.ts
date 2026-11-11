@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
+import { safeNext } from "@/lib/safe-next";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 import { Viewer } from "@/types";
 
@@ -33,11 +34,7 @@ export async function isAdmin(): Promise<boolean> {
   return (await getViewer())?.role === "admin";
 }
 
-/** Only safe local paths, so ?next= can't send people to another site. */
-export function safeNext(next: string | null | undefined, fallback = "/"): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
-  return next;
-}
+export { safeNext };
 
 /** Pages that need any signed-in person. */
 export async function requireViewer(next: string): Promise<Viewer> {

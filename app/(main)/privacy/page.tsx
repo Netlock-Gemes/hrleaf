@@ -18,7 +18,7 @@ export const metadata = {
 export default async function PrivacyPage() {
   const viewer = await getViewer();
   return (
-    <main className="min-h-screen">
+    <main id="main" className="min-h-screen">
       <SiteHeader>
         {viewer ? (
           <>

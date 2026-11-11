@@ -47,6 +47,8 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: securityHeaders },
       // Share links are secrets: never send them on to other sites.
       { source: "/s/:token", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+      // Browsers check for a new service worker on every visit; never let a CDN serve a stale one.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
     ];
   },
    webpack(config) {

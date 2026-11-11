@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
+import PaletteButton from "@/app/components/PaletteButton";
 import SiteHeader from "@/app/components/SiteHeader";
 import UserMenu from "@/app/components/UserMenu";
 import { updatedAgo } from "@/lib/site";
@@ -26,6 +27,7 @@ export default async function Home({ searchParams }: Props) {
   const page = Number.isFinite(pageNum) && pageNum > 1 ? pageNum - 1 : 0;
 
   const { rows, total, pageSize } = await listNotesFor(viewer, q, page);
+  const now = Date.now();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const isAdmin = viewer.role === "admin";
   const href = (p: number) => {
@@ -39,11 +41,12 @@ export default async function Home({ searchParams }: Props) {
   return (
     <div className="flex min-h-[100svh] flex-col">
       <SiteHeader>
+        <PaletteButton className="mr-1" />
         <NewNoteButton label="New note" variant="primary" shortcut />
         <UserMenu viewer={viewer} className="ml-1" />
       </SiteHeader>
 
-      <main className="mx-auto w-full max-w-[52rem] flex-1 px-3 pb-24 pt-8 sm:px-0 sm:pt-12">
+      <main id="main" className="mx-auto w-full max-w-[52rem] flex-1 px-3 pb-24 pt-8 sm:px-0 sm:pt-12">
         <div className="mb-6 flex flex-col gap-1.5 px-1">
           <h1 className="text-[1.75rem] font-semibold leading-none tracking-[-0.025em]">
             Notes
@@ -56,12 +59,24 @@ export default async function Home({ searchParams }: Props) {
 
         <HomeSearch initial={q} />
 
-        <ul className="panel mt-3 divide-y divide-border/70 overflow-clip">
-          {rows.map((d) => (
-            <li key={d.slug}>
+        <ul className="panel mt-3 overflow-clip">
+          {rows.map((d, i) => {
+            const group = recencyGroup(d.updated_at, now);
+            const showGroup = i === 0 || recencyGroup(rows[i - 1].updated_at, now) !== group;
+            return (
+            <li key={d.slug} className={showGroup ? "" : "border-t border-border/70"}>
+              {showGroup ? (
+                <div
+                  className={`tabular flex items-baseline justify-between bg-[--row-hover] px-4 pb-1.5 pt-2.5 text-[12px] font-medium text-[--text-tertiary] ${
+                    i === 0 ? "" : "border-t border-border"
+                  }`}
+                >
+                  <span>{group}</span>
+                </div>
+              ) : null}
               <Link
                 href={`/${d.slug}`}
-                className="group flex items-start gap-3 px-4 py-3 transition-colors duration-100 hover:bg-white/[0.025] focus-visible:bg-white/[0.04] focus-visible:outline-none"
+                className="group flex items-start gap-3 px-4 py-3 transition-colors duration-100 hover:bg-[--row-hover] focus-visible:bg-[--row-active] focus-visible:outline-none"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-2">
@@ -82,7 +97,8 @@ export default async function Home({ searchParams }: Props) {
                 </div>
               </Link>
             </li>
-          ))}
+            );
+          })}
           {rows.length === 0 ? (
             <li className="px-4 py-14 text-center">
               <p className="text-sm text-foreground">{q ? "No notes match." : "No notes yet."}</p>
@@ -117,6 +133,19 @@ export default async function Home({ searchParams }: Props) {
       </main>
     </div>
   );
+}
+
+/** Section label for a note's last edit, relative to the request time (UTC days). */
+function recencyGroup(iso: string | undefined, now: number): string {
+  if (!iso) return "Earlier";
+  const day = (t: number) => Math.floor(t / 86_400_000);
+  const diff = day(now) - day(new Date(iso).getTime());
+  if (diff <= 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  if (diff < 7) return "This week";
+  if (diff < 31) return "This month";
+  if (diff < 365) return "This year";
+  return "Older";
 }
 
 function Badge({ icon, label, tone }: { icon: React.ReactNode; label: string; tone?: "leaf" }) {

@@ -2,6 +2,27 @@
 
 All notable changes to HRLeaf are documented here.
 
+## [1.2.0] - 2026-11-11
+
+Polish, speed of use, and a safety net for the code.
+
+### Added
+
+- Light theme ("day paper") alongside dark, with System / Light / Dark in the account menu; no flash on load
+- Command palette (`Ctrl/⌘ + K`): search notes, jump to headings, and run note and app commands
+- Contents list beside long notes on wide screens, following your scroll
+- Installable app with offline reading of recently opened notes, an offline page, and an "Offline" indicator in the editor
+- Confirmation before saving a note that has been emptied
+- Home page grouped by Today, Yesterday, This week, This month…
+- Search button in headers, skip-to-content link, reduced-motion support for loading skeletons
+- Unit tests (Vitest), end-to-end tests (Playwright) with a guard against running on real data, and GitHub Actions CI
+- Structured `[hrleaf:error]` server error logs
+
+### Fixed
+
+- The primary button was white-on-white in light surfaces
+- Colours are now theme tokens throughout (danger, warning, hairlines, shadows, overlays)
+
 ## [1.1.0] - 2026-11-11
 
 Private by default: accounts, sharing, and safety nets.

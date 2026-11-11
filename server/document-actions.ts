@@ -13,6 +13,7 @@ import {
   restorePreviousVersion,
   saveDocumentContent,
   saveSharedContent,
+  listSlugsFor,
   slugStatus,
   suggestAvailableSlugs,
 } from "./document-service";
@@ -156,6 +157,17 @@ export async function suggestNoteNames(): Promise<string[]> {
   if (!(await getViewer())) return [];
   try {
     return await suggestAvailableSlugs(4);
+  } catch {
+    return [];
+  }
+}
+
+/** Note names for the command palette: everything this person can open, newest first. */
+export async function listNoteNames(): Promise<{ slug: string; updated_at: string | null }[]> {
+  const viewer = await getViewer();
+  if (!viewer) return [];
+  try {
+    return await listSlugsFor(viewer);
   } catch {
     return [];
   }

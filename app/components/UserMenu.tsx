@@ -1,10 +1,12 @@
 "use client";
 
-import { Home, KeyRound, Loader2, LogOut, Shield } from "lucide-react";
+import { Home, KeyRound, Loader2, LogOut, Monitor, Moon, Search, Shield, Sun } from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { useSignOut } from "@/app/hooks/useSignOut";
+import { useTheme } from "@/app/hooks/useTheme";
 import {
   Dialog,
   DialogContent,
@@ -18,14 +20,20 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { clearLocalNotes } from "@/lib/recent";
-import { changePasswordAction, logoutAction } from "@/server/auth-actions";
+import { openCommandPalette } from "@/lib/commands";
+import { ThemePref } from "@/lib/theme";
+import { changePasswordAction } from "@/server/auth-actions";
 import { Viewer } from "@/types";
+
+import CommandPalette from "./CommandPalette";
 
 export type ViewerInfo = Pick<Viewer, "name" | "username" | "role">;
 
@@ -41,20 +49,14 @@ export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
   );
 }
 
-/** Sign out, forgetting this device's recent notes and drafts first. */
-export function useSignOut() {
-  const [pending, start] = useTransition();
-  const signOut = () =>
-    start(async () => {
-      clearLocalNotes();
-      await logoutAction();
-    });
-  return { pending, signOut };
-}
+export { useSignOut };
 
 export default function UserMenu({ viewer, className = "" }: { viewer: ViewerInfo; className?: string }) {
   const { pending, signOut } = useSignOut();
+  const { pref, setTheme } = useTheme();
   const [pwOpen, setPwOpen] = useState(false);
+  const [mod, setMod] = useState("Ctrl+");
+  useEffect(() => setMod(/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+"), []);
   const isAdmin = viewer.role === "admin";
 
   return (
@@ -77,6 +79,10 @@ export default function UserMenu({ viewer, className = "" }: { viewer: ViewerInf
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem className="gap-2" onSelect={() => requestAnimationFrame(openCommandPalette)}>
+            <Search className="h-4 w-4" aria-hidden /> Search
+            <DropdownMenuShortcut>{mod}K</DropdownMenuShortcut>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild className="gap-2">
             <Link href="/">
               <Home className="h-4 w-4" aria-hidden /> All notes
@@ -94,12 +100,26 @@ export default function UserMenu({ viewer, className = "" }: { viewer: ViewerInf
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
+          <DropdownMenuLabel className="pb-1 text-[12px] font-normal text-muted-foreground">Theme</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={pref} onValueChange={(v) => setTheme(v as ThemePref)}>
+            <DropdownMenuRadioItem value="system" className="gap-2 pl-2 pr-8 [&>span:first-child]:left-auto [&>span:first-child]:right-2.5 data-[state=checked]:text-foreground" onSelect={(e) => e.preventDefault()}>
+              <Monitor className="h-4 w-4" aria-hidden /> System
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="light" className="gap-2 pl-2 pr-8 [&>span:first-child]:left-auto [&>span:first-child]:right-2.5 data-[state=checked]:text-foreground" onSelect={(e) => e.preventDefault()}>
+              <Sun className="h-4 w-4" aria-hidden /> Light
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="dark" className="gap-2 pl-2 pr-8 [&>span:first-child]:left-auto [&>span:first-child]:right-2.5 data-[state=checked]:text-foreground" onSelect={(e) => e.preventDefault()}>
+              <Moon className="h-4 w-4" aria-hidden /> Dark
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2" disabled={pending} onSelect={signOut}>
             <LogOut className="h-4 w-4" aria-hidden /> {pending ? "Signing out…" : "Sign out"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       {isAdmin ? null : <ChangePasswordDialog open={pwOpen} onOpenChange={setPwOpen} />}
+      <CommandPalette isAdmin={isAdmin} />
     </>
   );
 }
@@ -197,7 +217,7 @@ export function ChangePasswordDialog({
             />
           </div>
           {error ? (
-            <p role="alert" className="text-[13px] text-[hsl(2_80%_72%)]">
+            <p role="alert" className="text-[13px] text-[--danger-text]">
               {error}
             </p>
           ) : (

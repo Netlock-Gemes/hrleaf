@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
+import PaletteButton from "@/app/components/PaletteButton";
 import SiteHeader from "@/app/components/SiteHeader";
 import StaticNote, { formatDay } from "@/app/components/StaticNote";
 import UserMenu from "@/app/components/UserMenu";
@@ -48,6 +49,7 @@ export default async function ViewPage({ params }: Props) {
             Edit
           </Link>
         )}
+        <PaletteButton className="hidden sm:flex" />
         <NewNoteButton />
         <UserMenu viewer={viewer} className="ml-0.5" />
       </SiteHeader>

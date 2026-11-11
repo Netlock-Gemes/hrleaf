@@ -46,7 +46,7 @@ export default function LoginForm({ next }: { next: string }) {
       </div>
 
       {state.error ? (
-        <p id="login-error" role="alert" className="text-sm text-[hsl(2_80%_70%)]">
+        <p id="login-error" role="alert" className="text-sm text-[--danger-text]">
           {state.error}
         </p>
       ) : null}

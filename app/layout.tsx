@@ -1,7 +1,9 @@
 import { Geist, Geist_Mono } from "next/font/google";
 
+import ServiceWorker from "@/app/components/ServiceWorker";
 import { Toaster } from "@/components/ui/sonner";
 import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
+import { THEME_SCRIPT } from "@/lib/theme";
 
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
@@ -51,18 +53,32 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#121110",
-  colorScheme: "dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#121110" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f1ec" },
+  ],
+  colorScheme: "dark light",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
+    // The theme script sets the class before paint, so the server and client markup differ on purpose.
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <a
+          href="#main"
+          className="sr-only z-[100] rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+        >
+          Skip to content
+        </a>
         {children}
         <Toaster position="bottom-center" />
+        <ServiceWorker />
       </body>
     </html>
   );

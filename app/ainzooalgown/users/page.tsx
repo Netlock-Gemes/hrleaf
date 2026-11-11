@@ -13,7 +13,7 @@ export default async function UsersPage() {
   const admin = await requireAdmin();
   const users = await listUsers();
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
       <UsersPanel users={users} adminName={admin.username} now={Date.now()} />
     </main>
   );

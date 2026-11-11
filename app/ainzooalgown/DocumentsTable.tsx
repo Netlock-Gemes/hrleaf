@@ -310,7 +310,7 @@ export default function DocumentsTable({
             <button
               type="button"
               onClick={() => setConfirm({ kind: "emptyTrash", count: list.counts.trash })}
-              className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:border-destructive/40 hover:bg-destructive/10 hover:text-[hsl(2_80%_72%)]"
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:border-destructive/40 hover:bg-destructive/10 hover:text-[--danger-text]"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
               <span className="hidden sm:inline">Empty trash</span>
@@ -320,7 +320,7 @@ export default function DocumentsTable({
             <button
               type="button"
               onClick={() => setConfirm({ kind: "empty", count: list.counts.empty })}
-              className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:border-destructive/40 hover:bg-destructive/10 hover:text-[hsl(2_80%_72%)]"
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] text-[--text-secondary] transition-colors duration-150 hover:border-destructive/40 hover:bg-destructive/10 hover:text-[--danger-text]"
             >
               <Sparkles className="h-4 w-4" aria-hidden />
               <span className="hidden sm:inline">Delete empty</span>
@@ -342,7 +342,7 @@ export default function DocumentsTable({
             <col className="w-[5.25rem] sm:w-[7.5rem]" />
           </colgroup>
           <thead>
-            <tr className="text-left text-[12px] text-muted-foreground [&>th]:sticky [&>th]:top-14 [&>th]:z-10 [&>th]:bg-[hsl(40_5%_9%/0.94)] [&>th]:shadow-[inset_0_-1px_0_hsl(var(--border))] [&>th]:backdrop-blur-sm">
+            <tr className="text-left text-[12px] text-muted-foreground [&>th]:sticky [&>th]:top-14 [&>th]:z-10 [&>th]:bg-[--header-th] [&>th]:shadow-[inset_0_-1px_0_hsl(var(--border))] [&>th]:backdrop-blur-sm">
               <th className="py-2.5 pl-4 pr-1">
                 <Checkbox
                   checked={allSelected}
@@ -382,7 +382,7 @@ export default function DocumentsTable({
                 <tr
                   key={d.slug}
                   className={`group border-b border-border/70 transition-colors duration-100 last:border-0 ${
-                    isSelected ? "bg-[--primary-10]" : "hover:bg-white/[0.025]"
+                    isSelected ? "bg-[--primary-10]" : "hover:bg-[--row-hover]"
                   }`}
                 >
                   <td className="py-3 pl-4 pr-1 align-top">
@@ -508,7 +508,7 @@ export default function DocumentsTable({
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            className="gap-2 text-[hsl(2_80%_72%)] focus:bg-destructive/15 focus:text-[hsl(2_80%_75%)]"
+                            className="gap-2 text-[--danger-text] focus:bg-destructive/15 focus:text-[--danger-text]"
                             onSelect={() => setConfirm({ kind: "delete", slugs: [d.slug] })}
                           >
                             <Trash2 className="h-4 w-4" aria-hidden /> Move to trash…
@@ -596,7 +596,7 @@ export default function DocumentsTable({
         <div
           role="toolbar"
           aria-label="Bulk actions"
-          className="flex items-center gap-1 rounded-xl border border-border bg-popover p-1.5 pl-3 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.75)]"
+          className="flex items-center gap-1 rounded-xl border border-border bg-popover p-1.5 pl-3 shadow-[--shadow-float]"
         >
           <span className="tabular mr-1 text-[13px] text-foreground">{selected.size}<span className="hidden sm:inline"> selected</span></span>
           {inTrash ? (
@@ -849,7 +849,7 @@ function RenameDialog({ slug, onClose }: { slug: string | null; onClose: () => v
             />
           </div>
           {error ? (
-            <p id="rename-error" role="alert" className="text-[13px] text-[hsl(2_80%_72%)]">
+            <p id="rename-error" role="alert" className="text-[13px] text-[--danger-text]">
               {error}
             </p>
           ) : (
@@ -960,7 +960,7 @@ function BulkButton({
       disabled={disabled}
       onClick={onClick}
       className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] transition-colors duration-150 disabled:opacity-50 ${
-        danger ? "text-[hsl(2_80%_72%)] hover:bg-destructive/15" : "text-foreground hover:bg-accent"
+        danger ? "text-[--danger-text] hover:bg-destructive/15" : "text-foreground hover:bg-accent"
       }`}
     >
       {children}

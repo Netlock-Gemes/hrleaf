@@ -1,6 +1,7 @@
 "use client";
 
 import { $convertToMarkdownString } from "@lexical/markdown";
+import { $isHeadingNode } from "@lexical/rich-text";
 import { mergeRegister } from "@lexical/utils";
 import {
   $createParagraphNode,
@@ -17,10 +18,12 @@ import {
   Check,
   ChevronDown,
   Clock,
+  CloudOff,
   Download,
   Eye,
   FileText,
   Globe,
+  Hash,
   History,
   Link2,
   Loader2,
@@ -39,6 +42,7 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useDebounce } from "@/app/hooks";
+import { useOnline } from "@/app/hooks/useOnline";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +63,8 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { registerCommands } from "@/lib/commands";
+import { isDocumentContentEmpty } from "@/lib/content";
 import {
   RecentNote,
   clearDraft,
@@ -73,12 +79,14 @@ import { restorePrevious, saveDocument, saveSharedDocument } from "@/server/docu
 import { ShareLink, Visibility } from "@/types";
 
 import NewNoteDialog from "../NewNoteDialog";
+import PaletteButton from "../PaletteButton";
 import ShareDialog, { copyText, shareUrl } from "../ShareDialog";
 import SiteHeader from "../SiteHeader";
 import UserMenu, { ViewerInfo } from "../UserMenu";
 
 import { HRLEAF_TRANSFORMERS } from "./custom-transformers/HRLeafTransformers";
 import Editor from "./Editor";
+import TableOfContents, { Heading, headingDepth } from "./TableOfContents";
 
 interface EditorContainerProps {
   slug: string;
@@ -148,6 +156,55 @@ export default function EditorContainer({
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
+  const [emptyConfirm, setEmptyConfirm] = useState<{ force: boolean } | null>(null);
+  const [headings, setHeadings] = useState<Heading[]>([]);
+  const online = useOnline();
+
+  // Outline of the note, for the contents rail and the command palette.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    let last = "";
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const read = () => {
+      const next = editor.getEditorState().read(() =>
+        $getRoot()
+          .getChildren()
+          .filter($isHeadingNode)
+          .map((n) => ({ key: n.getKey(), tag: n.getTag(), text: n.getTextContent().trim().slice(0, 120) }))
+          .filter((h) => h.text),
+      );
+      const sig = JSON.stringify(next);
+      if (sig !== last) {
+        last = sig;
+        setHeadings(next);
+      }
+    };
+    read();
+    const off = editor.registerUpdateListener(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(read, 250);
+    });
+    return () => {
+      off();
+      if (timer) clearTimeout(timer);
+    };
+  }, [slug]);
+
+  const getHeadingElement = useCallback((key: string) => editorRef.current?.getElementByKey(key) ?? null, []);
+  const jumpTo = useCallback((key: string) => {
+    const el = editorRef.current?.getElementByKey(key);
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }, []);
+
+  // "New note…" from the command palette.
+  useEffect(() => {
+    const onNew = () => setNewOpen(true);
+    window.addEventListener("hrleaf:new-note", onNew);
+    return () => window.removeEventListener("hrleaf:new-note", onNew);
+  }, []);
 
   // Track undo/redo availability so the header buttons can enable/disable.
   useEffect(() => {
@@ -243,12 +300,26 @@ export default function EditorContainer({
   /* ---------------------------------- save ---------------------------------- */
 
   const save = useCallback(
-    async (force = false) => {
+    async (force = false, allowEmpty = false) => {
       const editor = editorRef.current;
       if (!editor || savingRef.current || locked) return;
       const state = editor.getEditorState();
       const serialised = serialise(state);
       if (!force && serialised === lastSavedRef.current) return;
+
+      // Never wipe a note silently: saving an empty sheet over saved text asks first.
+      if (!allowEmpty && isDocumentContentEmpty(state.toJSON())) {
+        let hadText = false;
+        try {
+          hadText = !!lastSavedRef.current && !isDocumentContentEmpty(JSON.parse(lastSavedRef.current));
+        } catch {
+          hadText = true;
+        }
+        if (hadText) {
+          setEmptyConfirm({ force });
+          return;
+        }
+      }
 
       savingRef.current = true;
       setSaving(true);
@@ -460,6 +531,62 @@ export default function EditorContainer({
   /* ----------------------------------- UI ----------------------------------- */
 
   const modKey = isMac ? "⌘" : "Ctrl+";
+
+  // Editor actions and headings in the command palette while this note is open.
+  const commandsRef = useRef({ downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty });
+  commandsRef.current = { downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty };
+  useEffect(() => {
+    const c = () => commandsRef.current;
+    const icon = (I: typeof Download) => <I className="h-4 w-4" aria-hidden />;
+    return registerCommands("editor", [
+      ...(locked
+        ? []
+        : [
+            {
+              id: "save",
+              group: "This note" as const,
+              label: "Save",
+              hint: `${modKey}S`,
+              icon: icon(Check),
+              run: () => (c().computeDirty() ? void c().save() : toast("Nothing new to save.", { duration: 1500 })),
+            },
+          ]),
+      { id: "md", group: "This note", label: "Download Markdown", keywords: "export md", icon: icon(Download), run: () => c().downloadMarkdown() },
+      { id: "pdf", group: "This note", label: "Export PDF", keywords: "print", icon: icon(Printer), run: () => c().exportPdf() },
+      {
+        id: "focus",
+        group: "This note",
+        label: focusMode ? "Turn off focus mode" : "Turn on focus mode",
+        keywords: "zen distraction",
+        icon: icon(Eye),
+        run: () => c().toggleFocus(!c().focusMode),
+      },
+      ...(isShared
+        ? []
+        : [
+            {
+              id: "copy",
+              group: "This note" as const,
+              label: "Copy link",
+              keywords: "share url",
+              icon: icon(Link2),
+              run: () => void copy(`${location.origin}/${slug}`, "Link copied"),
+            },
+          ]),
+      ...(isAdmin
+        ? [{ id: "share", group: "This note" as const, label: "Share settings…", keywords: "public link only me team", icon: icon(Settings2), run: () => setShareOpen(true) }]
+        : []),
+      ...headings.map((h) => ({
+        id: `h:${h.key}`,
+        group: "Contents" as const,
+        label: h.text,
+        keywords: "heading section jump",
+        depth: headingDepth(h.tag),
+        icon: icon(Hash),
+        run: () => jumpTo(h.key),
+      })),
+    ]);
+  }, [headings, locked, focusMode, isShared, isAdmin, slug, modKey, jumpTo, copy]);
   const headerHidden = focusMode && typing;
   const otherRecent = recent.filter((r) => r.slug !== slug);
 
@@ -555,6 +682,17 @@ export default function EditorContainer({
                 <Redo2 className="h-4 w-4" aria-hidden />
               </HistoryButton>
             </div>
+          )}
+
+          {online ? null : (
+            <span
+              role="status"
+              title="You're offline. Changes stay on this device; save when you're back online."
+              className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-[--warn-text]"
+            >
+              <CloudOff className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Offline</span>
+            </span>
           )}
 
           {locked ? (
@@ -680,6 +818,7 @@ export default function EditorContainer({
 
           {viewer ? (
             <>
+              <PaletteButton className="hidden sm:flex" />
               <button
                 type="button"
                 onClick={() => setNewOpen(true)}
@@ -697,6 +836,9 @@ export default function EditorContainer({
         </SiteHeader>
       </div>
 
+      <TableOfContents headings={headings} getElement={getHeadingElement} onJump={jumpTo} hidden={headerHidden} />
+
+      <main id="main" className="flex flex-grow flex-col">
       <Editor
         key={slug}
         editorRef={editorRef}
@@ -705,6 +847,7 @@ export default function EditorContainer({
         onEditorStateChange={handleEditorStateChange}
         preview={preview}
       />
+      </main>
 
       {viewer ? <NewNoteDialog open={newOpen} onOpenChange={setNewOpen} onNavigate={navigate} /> : null}
       {isAdmin ? (
@@ -732,7 +875,7 @@ export default function EditorContainer({
             <button
               type="button"
               onClick={() => void leave(false)}
-              className="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium text-[hsl(2_80%_70%)] transition-colors hover:bg-destructive/15"
+              className="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium text-[--danger-text] transition-colors hover:bg-destructive/15"
             >
               Discard
             </button>
@@ -742,7 +885,7 @@ export default function EditorContainer({
                 void leave(true);
               }}
               disabled={saving}
-              className="bg-[--leaf] text-[#0f1a13] hover:bg-[--leaf-strong]"
+              className="bg-[--leaf] text-[--on-leaf] hover:bg-[--leaf-hover]"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               Save and leave
@@ -759,7 +902,7 @@ export default function EditorContainer({
             <AlertDialogDescription>
               This brings back the version saved {ago(previousAt)}. What&apos;s saved now becomes the previous version, so you can switch back.
               {dirty ? (
-                <span className="mt-2 block text-[hsl(38_90%_70%)]">Your unsaved changes will be discarded.</span>
+                <span className="mt-2 block text-[--warn-text]">Your unsaved changes will be discarded.</span>
               ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -774,6 +917,32 @@ export default function EditorContainer({
             >
               {restoring ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               Restore
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Saving would empty a note that has text */}
+      <AlertDialog open={emptyConfirm !== null} onOpenChange={(o) => !o && setEmptyConfirm(null)}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save this note empty?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Everything in <span className="font-mono text-foreground">{slug}</span> has been deleted. If you save, the
+              note becomes empty. The text you had is kept as the previous version, so you can restore it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const force = emptyConfirm?.force ?? false;
+                setEmptyConfirm(null);
+                void save(force, true);
+              }}
+            >
+              Save empty note
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -868,7 +1037,7 @@ function SaveButton({
         title={state === "dirty" ? `Save (${modKey}S)` : state === "clean" ? "No unsaved changes" : undefined}
         className={`save-button flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium transition-[background-color,color,box-shadow] duration-200 ease-out ${
           state === "dirty"
-            ? "bg-[--leaf] text-[#0f1a13] shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_2px_8px_-2px_rgba(76,196,126,0.45)] hover:bg-[--leaf-strong] active:scale-[0.98]"
+            ? "bg-[--leaf] text-[--on-leaf] shadow-[--shadow-leaf] hover:bg-[--leaf-hover] active:scale-[0.98]"
             : state === "saving"
               ? "cursor-progress bg-[--primary-20] text-[--leaf-strong]"
               : state === "saved"
@@ -883,7 +1052,7 @@ function SaveButton({
         ) : null}
         {label}
         {state === "dirty" ? (
-          <kbd className="ml-0.5 hidden rounded bg-black/15 px-1 font-sans text-[11px] font-medium leading-4 text-[#0f1a13]/75 sm:inline">
+          <kbd className="ml-0.5 hidden rounded bg-black/15 px-1 font-sans text-[11px] font-medium leading-4 text-[--on-leaf] opacity-75 sm:inline">
             {modKey}S
           </kbd>
         ) : null}

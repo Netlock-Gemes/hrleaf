@@ -33,7 +33,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
   const [list, stats, storage] = await Promise.all([listDocuments(query), getAdminStats(), getStorageInfo()]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
       <div className="mb-7 flex items-end justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1.5">
           <h1 className="text-[1.75rem] font-semibold leading-none tracking-[-0.025em]">Notes</h1>

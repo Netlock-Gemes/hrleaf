@@ -12,7 +12,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   }, [error]);
 
   return (
-    <main className="flex min-h-[100svh] items-center justify-center px-5 py-12">
+    <main id="main" className="flex min-h-[100svh] items-center justify-center px-5 py-12">
       <div className="flex w-full max-w-[24rem] flex-col items-start gap-6">
         <LogoMark size={30} />
         <div>

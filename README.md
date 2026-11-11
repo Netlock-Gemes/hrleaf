@@ -6,6 +6,7 @@ A private, invitation-only notebook. Notes are only open to signed-in accounts t
 - Press **New note** (or `N`) and pick a name, or go straight to `/anything-you-want`
 - Write with Markdown shortcuts, the `/` command menu, or the formatting toolbar
 - Press **Save** or `Ctrl/⌘ + S`. The button lights up only when there's something to save
+- Press `Ctrl/⌘ + K` anywhere to search notes, jump to a heading, or run a command
 
 ## Who can open what
 
@@ -57,6 +58,14 @@ Type the symbol, then a space:
 
 Press `/` for headings, lists, tables, quotes, alignment, code blocks and equations. Type `/3x4` to insert a 3 × 4 table directly.
 
+### Command palette (`Ctrl/⌘ + K`)
+
+Search every note you can open (best match first, with **Create** as the fallback), jump to a heading in the open note, or run commands: new note, save, download Markdown, export PDF, focus mode, copy link, share settings (admin), switch theme, sign out. It also opens from the search button in the header or the account menu.
+
+### Contents
+
+Notes with two or more headings get a contents list beside the page on wide screens, highlighting the section you're reading. On any screen size, the headings are also in the command palette.
+
 ### More menu (`⋯`)
 
 - **Restore previous version**
@@ -65,6 +74,18 @@ Press `/` for headings, lists, tables, quotes, alignment, code blocks and equati
 - **Focus mode**: the header hides while you type and returns when you move the mouse
 
 The note name in the header opens your **recent notes** (stored in this browser only).
+
+### Light and dark
+
+Choose **System**, **Light** or **Dark** in the account menu or the command palette. The choice is remembered per browser and applied before the page draws, so there's no flash.
+
+### Install and offline
+
+HRLeaf can be installed as an app from the browser ("Install" or "Add to Home Screen"). Notes you've opened on a device can be read offline (up to 40 most recent). Saving needs a connection; the editor shows **Offline**, and unsaved changes are kept on the device until you're back. Signing out removes the offline copies.
+
+### Safety net for empty saves
+
+If you clear all the text in a note and save, HRLeaf asks first. Saving an empty note keeps the old text as the previous version, so you can still restore it.
 
 ## Admin
 
@@ -117,6 +138,20 @@ On first start the app creates its indexes (including the trash and activity-log
 - Passwords are hashed with scrypt; sessions are HMAC-signed, `httpOnly` cookies (admin 7 days, members 30 days).
 - Sign-in is rate limited (5 failures per IP per 15 minutes, 50 overall). Saves through editable share links are limited to 120 per IP per 10 minutes.
 - Security headers on every response: Content-Security-Policy, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy (`no-referrer` on share links), Permissions-Policy and HSTS.
+
+## Tests
+
+```bash
+npm test            # unit tests (Vitest): slugs, content, sessions, passwords, redirects
+npm run build
+npm run test:e2e    # browser tests (Playwright): roles, sharing, drafts, trash, palette, themes
+```
+
+The end-to-end tests create notes and users named `zz-e2e-…` and delete them afterwards. They refuse to run unless `MONGODB_DB` ends in `_dev`, `_ci` or `_test`, so they can't touch real notes. Set `PLAYWRIGHT_CHROMIUM_PATH` to use an installed Chromium.
+
+**CI** (`.github/workflows/ci.yml`) runs on every push to `develop` and `main` and on pull requests: lint, type check, unit tests and build, then the browser tests against a throwaway MongoDB inside the runner.
+
+**Errors in production** are logged on one line starting with `[hrleaf:error]` (route, path, message, digest; never cookies or note text). Find them in Vercel → Logs.
 
 ## How it's built
 

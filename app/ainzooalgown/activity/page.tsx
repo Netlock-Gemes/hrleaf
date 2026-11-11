@@ -46,7 +46,7 @@ export default async function ActivityPage({ searchParams }: Props) {
   };
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
       <div className="mb-6 flex flex-col gap-1.5">
         <h1 className="text-[1.75rem] font-semibold leading-none tracking-[-0.025em]">Activity</h1>
         <p className="tabular text-[13px] text-muted-foreground">
@@ -82,7 +82,7 @@ export default async function ActivityPage({ searchParams }: Props) {
               <div className="min-w-0 flex-1 text-[13px] leading-5">
                 <p className="text-[--text-secondary]">
                   <span className="font-medium text-foreground">{r.actor}</span>{" "}
-                  <span className={isAlert(r.action) ? "text-[hsl(2_80%_72%)]" : undefined}>{r.action}</span>
+                  <span className={isAlert(r.action) ? "text-[--danger-text]" : undefined}>{r.action}</span>
                   {r.target ? (
                     <>
                       {" "}

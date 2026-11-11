@@ -45,3 +45,7 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+# test output
+/test-results/
+/playwright-report/

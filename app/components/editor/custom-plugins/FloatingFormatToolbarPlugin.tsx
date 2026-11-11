@@ -250,7 +250,7 @@ export function FloatingFormatToolbarPlugin(): React.ReactElement | null {
           <button
             type="submit"
             onMouseDown={(e) => e.preventDefault()}
-            className="h-7 rounded-md bg-[--leaf] px-2.5 text-[12px] font-medium text-[#0f1a13] hover:bg-[--leaf-strong]"
+            className="h-7 rounded-md bg-[--leaf] px-2.5 text-[12px] font-medium text-[--on-leaf] hover:bg-[--leaf-hover]"
           >
             Apply
           </button>

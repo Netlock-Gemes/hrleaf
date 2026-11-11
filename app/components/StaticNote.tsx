@@ -6,7 +6,7 @@ import { renderDocumentStatic } from "@/lib/static-render";
 export default function StaticNote({ content }: { content: object | null | undefined }) {
   const body = renderDocumentStatic(content, { equations: "katex" });
   return (
-    <div className="editor-root">
+    <main id="main" className="editor-root">
       <article className="editor-area cursor-auto">
         <div className="editor-wrapper">
           {body ? (
@@ -16,7 +16,7 @@ export default function StaticNote({ content }: { content: object | null | undef
           )}
         </div>
       </article>
-    </div>
+    </main>
   );
 }
 

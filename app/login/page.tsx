@@ -18,7 +18,7 @@ export default async function LoginPage({ searchParams }: Props) {
   if (await getViewer()) redirect(next);
 
   return (
-    <main className="flex min-h-[100svh] items-center justify-center px-4 py-12">
+    <main id="main" className="flex min-h-[100svh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-[22rem]">
         <div className="mb-8 flex flex-col items-start gap-5">
           <LogoMark size={34} />

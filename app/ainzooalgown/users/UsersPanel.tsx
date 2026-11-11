@@ -93,7 +93,7 @@ export default function UsersPanel({ users, adminName }: { users: UserSummary[];
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[--leaf] px-3 text-[13px] font-medium text-[#0f1a13] shadow-[0_1px_0_rgba(255,255,255,0.2)_inset] transition-colors hover:bg-[--leaf-strong]"
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[--leaf] px-3 text-[13px] font-medium text-[--on-leaf] shadow-[--shadow-leaf] transition-colors hover:bg-[--leaf-hover]"
         >
           <UserPlus className="h-4 w-4" aria-hidden /> Add user
         </button>
@@ -167,7 +167,7 @@ export default function UsersPanel({ users, adminName }: { users: UserSummary[];
                   )}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="gap-2 text-[hsl(2_80%_72%)] focus:bg-destructive/15 focus:text-[hsl(2_80%_75%)]"
+                  className="gap-2 text-[--danger-text] focus:bg-destructive/15 focus:text-[--danger-text]"
                   onSelect={() => setConfirm({ kind: "delete", user: u })}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden /> Delete user…
@@ -359,7 +359,7 @@ function AddUserDialog({
             )}
           </div>
           {error ? (
-            <p role="alert" className="text-[13px] text-[hsl(2_80%_72%)]">
+            <p role="alert" className="text-[13px] text-[--danger-text]">
               {error}
             </p>
           ) : null}

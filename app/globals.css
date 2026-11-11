@@ -6,6 +6,10 @@
  * hrleaf — "Quiet paper"
  * Warm near-black room, a slightly lifted sheet, off-white ink.
  * Leaf green is reserved for state: caret, focus, saved, selection.
+ *
+ * Dark ("night") is the default. `.light` swaps in "day paper": warm off-white
+ * room, a brighter sheet, ink-brown text. The theme script in app/layout.tsx
+ * sets the class before first paint.
  */
 :root {
   color-scheme: dark;
@@ -32,6 +36,23 @@
   --text-secondary: rgba(var(--text-rgb), 0.72);
   --text-tertiary: rgba(var(--text-rgb), 0.56);
   --text-disabled: rgba(var(--text-rgb), 0.32);
+
+  /* Semantic */
+  --danger-text: hsl(2 80% 72%);
+  --warn-text: hsl(38 90% 70%);
+  --on-leaf: #0f1a13;
+  --leaf-hover: #6fd69a;
+  --shadow-leaf: 0 1px 0 rgba(255, 255, 255, 0.22) inset, 0 6px 16px -8px rgba(76, 196, 126, 0.55);
+  --overlay: rgba(6, 5, 4, 0.72);
+  --hairline: rgba(var(--text-rgb), 0.07);
+  --row-hover: rgba(var(--text-rgb), 0.025);
+  --row-active: rgba(var(--text-rgb), 0.045);
+  --header-th: hsl(40 5% 9% / 0.94);
+  --shadow-sheet: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  --shadow-panel: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 1px 2px rgba(0, 0, 0, 0.35),
+    0 12px 32px -20px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 10px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-float: 0 12px 32px -12px rgba(0, 0, 0, 0.75);
 
   --primary-10: rgba(var(--leaf-rgb), 0.1);
   --primary-20: rgba(var(--leaf-rgb), 0.2);
@@ -91,6 +112,64 @@
   --radius: 0.625rem;
 }
 
+/* Day paper */
+:root.light {
+  color-scheme: light;
+
+  --leaf-strong: #17804a;
+  --room: #f3f1ec;
+  --paper: #fbfaf7;
+  --surface-dark: #ebe8e2;
+  --surface-medium: #fdfcfa;
+  --surface-light: #d9d4cb;
+  --surface-dark-lighter: #f1eee8;
+  --surface-dark-darker: #e4e0d8;
+  --surface-medium-lighter: #e7e3dc;
+  --surface-medium-darker: #f1eee8;
+
+  --text-rgb: 33, 30, 26;
+  --text-secondary: rgba(var(--text-rgb), 0.78);
+  --text-tertiary: rgba(var(--text-rgb), 0.66);
+  --text-disabled: rgba(var(--text-rgb), 0.38);
+
+  --text-link-hover: #0f6338;
+  --danger-text: hsl(2 62% 44%);
+  --warn-text: hsl(32 80% 34%);
+  --hairline: rgba(var(--text-rgb), 0.1);
+  --overlay: rgba(48, 38, 24, 0.28);
+  --leaf-hover: #43b672;
+  --shadow-leaf: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 6px 14px -8px rgba(23, 128, 74, 0.5);
+  --row-hover: rgba(var(--text-rgb), 0.03);
+  --row-active: rgba(var(--text-rgb), 0.05);
+  --header-th: hsl(40 25% 98% / 0.94);
+  --shadow-sheet: 0 1px 2px rgba(60, 45, 20, 0.05), 0 14px 36px -18px rgba(60, 45, 20, 0.22);
+  --shadow-panel: 0 1px 2px rgba(60, 45, 20, 0.05), 0 12px 32px -22px rgba(60, 45, 20, 0.25);
+  --shadow-pop: 0 12px 30px -12px rgba(60, 45, 20, 0.28), 0 2px 6px -2px rgba(60, 45, 20, 0.12);
+  --shadow-float: 0 14px 34px -14px rgba(60, 45, 20, 0.35);
+  --checkbox-border: rgba(var(--text-rgb), 0.4);
+  --table-striping: rgba(var(--text-rgb), 0.025);
+
+  --background: 40 18% 94%;
+  --foreground: 32 12% 12%;
+  --card: 40 33% 98.5%;
+  --card-foreground: 32 12% 12%;
+  --popover: 40 33% 99%;
+  --popover-foreground: 32 12% 12%;
+  --primary: 32 12% 13%;
+  --primary-foreground: 40 30% 97%;
+  --secondary: 38 14% 89%;
+  --secondary-foreground: 32 12% 12%;
+  --muted: 38 14% 89%;
+  --muted-foreground: 33 6% 36%;
+  --accent: 38 14% 88%;
+  --accent-foreground: 32 12% 10%;
+  --destructive: 2 62% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 37 12% 84%;
+  --input: 37 11% 79%;
+  --ring: 145 60% 34%;
+}
+
 html {
   background: var(--room);
 }
@@ -127,9 +206,8 @@ body {
 
   .editor-area {
     @apply relative w-full max-w-[52rem] flex-grow flex flex-col cursor-text
-           bg-editor-bg rounded-xl mb-6 border border-white/[0.06];
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
-      0 12px 32px -16px rgba(0, 0, 0, 0.6);
+           bg-editor-bg rounded-xl mb-6 border border-[--hairline];
+    box-shadow: var(--shadow-sheet);
   }
 
   .editor-wrapper {
@@ -200,7 +278,7 @@ body {
   }
 
   .format-toolbar {
-    box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-pop);
     animation: toolbar-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
@@ -219,14 +297,12 @@ body {
 
   /* Raised surface for admin panels: hairline, top highlight, soft offset shadow */
   .panel {
-    @apply rounded-xl border border-white/[0.07] bg-card;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035),
-      0 1px 2px rgba(0, 0, 0, 0.35),
-      0 12px 32px -20px rgba(0, 0, 0, 0.7);
+    @apply rounded-xl border border-[--hairline] bg-card;
+    box-shadow: var(--shadow-panel);
   }
 
   .kbd {
-    @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-white/10 bg-white/[0.04] px-1 font-sans text-[11px] font-medium leading-none text-[--text-tertiary];
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-[--hairline] bg-[--row-active] px-1 font-sans text-[11px] font-medium leading-none text-[--text-tertiary];
   }
 
   .admin-checkbox {
@@ -658,13 +734,13 @@ body {
 
   /* Insert button */
   .editor-table-button {
-    @apply bg-[--leaf] text-[#0f1a13] font-medium px-2 py-1 ml-2 rounded-squircle-xs text-sm
+    @apply bg-[--leaf] text-[--on-leaf] font-medium px-2 py-1 ml-2 rounded-squircle-xs text-sm
           border-0 cursor-pointer;
     transition: background-color 0.2s ease;
   }
 
   .editor-table-button:hover {
-    @apply bg-[--leaf-strong];
+    @apply bg-[--leaf-hover];
   }
 
   .editor-table-button:focus {
@@ -904,6 +980,44 @@ body {
     @apply text-orange-300;
   }
 
+  /* Day paper: the same hues, dark enough to read on a light sheet */
+  .light .editor-token-property,
+  .light .editor-token-boolean,
+  .light .editor-token-constant,
+  .light .editor-token-deleted,
+  .light .editor-token-number,
+  .light .editor-token-symbol,
+  .light .editor-token-tag {
+    @apply text-purple-700;
+  }
+  .light .editor-token-selector,
+  .light .editor-token-builtin,
+  .light .editor-token-char,
+  .light .editor-token-inserted,
+  .light .editor-token-string {
+    @apply text-green-700;
+  }
+  .light .editor-token-operator,
+  .light .editor-token-entity,
+  .light .editor-token-url {
+    @apply text-orange-700;
+  }
+  .light .editor-token-attr,
+  .light .editor-token-keyword {
+    @apply text-blue-700;
+  }
+  .light .editor-token-variable,
+  .light .editor-token-namespace,
+  .light .editor-token-regex,
+  .light .editor-token-important {
+    @apply text-yellow-700;
+  }
+  .light .editor-token-function,
+  .light .editor-token-class,
+  .light .editor-token-class-name {
+    @apply text-pink-700;
+  }
+
   /* icons */
   .icon {
     @apply inline-block w-5 h-5 select-none text-text-secondary;
@@ -956,6 +1070,85 @@ body {
   .editor-placeholder,
   [data-sonner-toaster],
   nextjs-portal {
+    display: none !important;
+  }
+}
+
+/* Theme swap happens in one frame: no element fades between palettes. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Command palette: drops in from just above, fast; closes faster. */
+@media (prefers-reduced-motion: no-preference) {
+  .palette[data-state="open"] {
+    animation: palette-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .palette[data-state="closed"] {
+    animation: palette-out 110ms ease-in forwards;
+  }
+  .palette-overlay[data-state="open"] {
+    animation: fade-in 180ms ease-out;
+  }
+  .palette-overlay[data-state="closed"] {
+    animation: fade-out 110ms ease-in forwards;
+  }
+}
+
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(0.985);
+  }
+}
+@keyframes palette-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -4px) scale(0.99);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Table of contents beside the sheet, only where there's room for it. */
+.toc-rail {
+  display: none;
+}
+@media (min-width: 1400px) {
+  .toc-rail {
+    display: block;
+    position: fixed;
+    top: 6.5rem;
+    left: calc(50% + 26rem + 2rem);
+    width: 12.5rem;
+    max-height: calc(100svh - 9rem);
+    overflow-y: auto;
+    scrollbar-width: none;
+    transition: opacity 200ms ease-out;
+  }
+}
+.toc-rail-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.editor-heading-h1,
+.editor-heading-h2,
+.editor-heading-h3 {
+  scroll-margin-top: 5.5rem;
+}
+@media print {
+  .toc-rail {
     display: none !important;
   }
 }
