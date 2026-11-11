@@ -59,7 +59,7 @@ export default async function SharedNotePage({ params }: Props) {
           </span>
         </span>
       </SiteHeader>
-      <StaticNote content={doc.content} />
+      <StaticNote content={doc.content} name={doc.slug} access="Shared link · read only" updatedAt={doc.updated_at} />
     </div>
   );
 }

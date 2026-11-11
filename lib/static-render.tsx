@@ -4,6 +4,7 @@ import katex from "katex";
 import { Fragment, ReactNode } from "react";
 
 import theme from "@/app/components/editor/themes/DefaultTheme";
+import { CALLOUT_ICONS, CALLOUT_LABELS, CHEVRON_ICON, isCalloutVariant } from "@/lib/blocks";
 
 /**
  * Renders saved Lexical JSON to plain React/HTML on the server, using the same
@@ -28,6 +29,8 @@ type Node = {
   equation?: string;
   inline?: boolean;
   indent?: number;
+  variant?: string;
+  open?: boolean;
 };
 
 type Options = { equations: "katex" | "plain" };
@@ -212,6 +215,35 @@ function renderNode(node: Node, key: number, opts: Options, depth: number): Reac
     }
     case "equation":
       return renderEquation(node, key, opts);
+    case "callout": {
+      const variant = isCalloutVariant(node.variant) ? node.variant : "note";
+      return (
+        <aside key={key} className="editor-callout" data-variant={variant} aria-label={CALLOUT_LABELS[variant]}>
+          <span className="editor-callout-icon" dangerouslySetInnerHTML={{ __html: CALLOUT_ICONS[variant] }} />
+          <div className="editor-callout-body">{renderChildren(node.children, opts, depth)}</div>
+        </aside>
+      );
+    }
+    case "toggle": {
+      const [title, ...rest] = node.children ?? [];
+      return (
+        <details key={key} className="editor-toggle" open={node.open !== false}>
+          <summary className="editor-toggle-title">
+            <span className="editor-toggle-chevron" dangerouslySetInnerHTML={{ __html: CHEVRON_ICON }} />
+            <span className="editor-toggle-title-text">
+              {title?.type === "toggle-title" ? renderChildren(title.children, opts, depth) : null}
+            </span>
+          </summary>
+          {rest.map((child, i) => renderNode(child, i, opts, depth))}
+        </details>
+      );
+    }
+    case "toggle-content":
+      return (
+        <div key={key} className="editor-toggle-content">
+          {renderChildren(node.children, opts, depth)}
+        </div>
+      );
     default:
       return node.children ? (
         <Fragment key={key}>{renderChildren(node.children, opts, depth)}</Fragment>

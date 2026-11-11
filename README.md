@@ -56,7 +56,17 @@ Type the symbol, then a space:
 
 ### Command menu
 
-Press `/` for headings, lists, tables, quotes, alignment, code blocks and equations. Type `/3x4` to insert a 3 × 4 table directly.
+Press `/` for blocks, grouped into Basic, Lists, Insert, Code, Math and Format. Start typing to filter.
+
+- **Headings 1–4**, quote, divider, bulleted, numbered and check lists
+- **Callout**: a tinted box for notes. Click its icon to switch between Note, Tip, Warning and Important (or type `/tip`, `/warning`)
+- **Toggle**: a collapsible section. Click the arrow or press `Ctrl/⌘ + Enter` in its title to open or close it
+- **Table**: type `/3x4` to insert a 3 × 4 table directly. Wide tables scroll sideways instead of squeezing their columns
+- **Link to note**: or type `[[` anywhere, then pick a note
+- **Code block**, or a language directly (`/python`, `/sql`, `/js`…)
+- **Today's date**, **Current time**, equations, indent / outdent, clear formatting, alignment
+
+Inside a callout or toggle, press Enter on an empty last line to step out below it.
 
 ### Command palette (`Ctrl/⌘ + K`)
 
@@ -144,7 +154,7 @@ On first start the app creates its indexes (including the trash and activity-log
 ```bash
 npm test            # unit tests (Vitest): slugs, content, sessions, passwords, redirects
 npm run build
-npm run test:e2e    # browser tests (Playwright): roles, sharing, drafts, trash, palette, themes
+npm run test:e2e    # browser tests (Playwright): roles, sharing, drafts, trash, palette, themes, tables, callouts, toggles
 ```
 
 The end-to-end tests create notes and users named `zz-e2e-…` and delete them afterwards. They refuse to run unless `MONGODB_DB` ends in `_dev`, `_ci` or `_test`, so they can't touch real notes. Set `PLAYWRIGHT_CHROMIUM_PATH` to use an installed Chromium.

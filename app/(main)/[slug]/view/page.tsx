@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
+import { accessLabel } from "@/app/components/NoteFields";
 import PaletteButton from "@/app/components/PaletteButton";
 import SiteHeader from "@/app/components/SiteHeader";
 import StaticNote, { formatDay } from "@/app/components/StaticNote";
@@ -53,7 +54,12 @@ export default async function ViewPage({ params }: Props) {
         <NewNoteButton />
         <UserMenu viewer={viewer} className="ml-0.5" />
       </SiteHeader>
-      <StaticNote content={doc?.content} />
+      <StaticNote
+        content={doc?.content}
+        name={slug}
+        access={accessLabel({ visibility: doc?.visibility, publicLink: !!doc?.share, locked: doc?.read_only })}
+        updatedAt={doc?.updated_at}
+      />
     </div>
   );
 }

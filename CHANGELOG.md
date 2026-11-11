@@ -2,6 +2,23 @@
 
 All notable changes to HRLeaf are documented here.
 
+## [1.3.0] - 2026-11-12
+
+A new sheet design, better tables and more blocks.
+
+### Added
+
+- New sheet design, "Green Columnar Pad": a ruled header with the note's name, who can see it and when it was saved; green-ruled ledger tables with alternate rows; square ruled callouts, checklists and code. Dark-first, in HRLeaf's own green and charcoal; light and print match (see DESIGN.md)
+- Wide tables keep readable columns and scroll sideways inside the page, with a fade on the edge that has more; long text wraps within its column. Works in the editor, read-only pages and share links
+- `/` menu grouped into sections, with Heading 4, Callout (Note, Tip, Warning, Important), Toggle (collapsible section), Link to note, Today's date, Current time, code blocks in a chosen language, Indent, Outdent and Clear formatting
+- `[[` links another note by name
+- Markdown export writes callouts as `> [!NOTE]` alerts and toggles as `<details>`
+
+### Fixed
+
+- After picking from the `/` menu, an invisible box stayed where the command was typed and blocked clicks there
+- The table cell menu now follows its cell when a table scrolls sideways, and the "add row" button sits below the scrollbar
+
 ## [1.2.0] - 2026-11-11
 
 Polish, speed of use, and a safety net for the code.

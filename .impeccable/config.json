@@ -1,0 +1,29 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-zine.html"
+        ],
+        "createdAt": "2026-11-11T20:00:17.834Z",
+        "reason": "catalog world hand-drawn-zine-explainer specifies a cream paper ground; throwaway decision sketch"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-11-11T20:36:46.813Z",
+        "reason": "Geist is HRLeaf's incumbent app font, already used across the product; user asked to keep HRLeaf's own look"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "createdAt": "2026-11-11T20:36:46.834Z",
+        "reason": "Geist Mono is HRLeaf's incumbent code font"
+      }
+    ]
+  }
+}

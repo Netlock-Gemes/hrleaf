@@ -19,6 +19,12 @@
   --leaf-strong: #6fd69a;
   --leaf-rgb: 76, 196, 126;
 
+  /* Columnar pad ruling: the sheet's lines are drawn in leaf green. */
+  --pad-rule: rgba(var(--leaf-rgb), 0.55);
+  --pad-hair: rgba(var(--leaf-rgb), 0.17);
+  --pad-wash: rgba(var(--leaf-rgb), 0.05);
+  --pad-label: var(--leaf-strong);
+
   /* Surfaces (hex, used by editor CSS) */
   --room: #121110;            /* page background */
   --paper: #181715;           /* writing sheet */
@@ -117,6 +123,9 @@
   color-scheme: light;
 
   --leaf-strong: #17804a;
+  --pad-rule: rgba(23, 128, 74, 0.55);
+  --pad-hair: rgba(23, 128, 74, 0.18);
+  --pad-wash: rgba(23, 128, 74, 0.045);
   --room: #f3f1ec;
   --paper: #fbfaf7;
   --surface-dark: #ebe8e2;
@@ -327,6 +336,10 @@ body {
     @apply text-[1.2rem] leading-[1.4] font-semibold mt-6 mb-1.5 first:mt-0;
   }
 
+  .editor-heading-h4 {
+    @apply text-[1.05rem] leading-[1.5] font-semibold mt-5 mb-1 first:mt-0 text-[--text-secondary];
+  }
+
   .editor-quote {
     @apply border-l-2 border-quote-border pl-5 my-5 max-sm:pl-3 text-text-secondary;
   }
@@ -528,14 +541,51 @@ body {
     @apply flex leading-5 flex-grow min-w-32 mr-auto;
   }
 
-  /* Table wrapper */
+  /* Table wrapper: wide tables keep their columns and scroll sideways inside the sheet. */
   .editor-table-scrollable-wrapper {
-    @apply overflow-x-auto;
+    @apply relative my-6 overflow-x-auto overflow-y-hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--table-border) transparent;
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* Base table */
+  .editor-table-scrollable-wrapper::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .editor-table-scrollable-wrapper::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background: var(--table-border);
+  }
+
+  .editor-table-scrollable-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Fades on whichever edge has more table hidden behind it (set by TableOverflowHints). */
+  .editor-table-scrollable-wrapper[data-overflow="right"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+
+  .editor-table-scrollable-wrapper[data-overflow="left"] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+  }
+
+  .editor-table-scrollable-wrapper[data-overflow="both"] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+  }
+
+  /* Base table: at least the sheet's width, wider when the columns need it. */
   .editor-table {
-    @apply relative border-collapse border-0 table-fixed w-full mt-6 mb-8 min-w-[200px] rounded-squircle-sm overflow-hidden mx-auto;
+    @apply relative border-collapse border-0 rounded-squircle-sm overflow-hidden;
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+    margin: 0 0 2px;
   }
 
   /* Pseudo-element for the outer border */
@@ -544,7 +594,7 @@ body {
     @apply absolute inset-0 pointer-events-none border border-table-border rounded-squircle-sm;
   }
 
-  /* Table alignment */
+  /* Table alignment only matters for tables narrower than the sheet. */
   .editor-table-align-center {
     @apply mx-auto;
   }
@@ -555,7 +605,27 @@ body {
 
   /* Table cells */
   .editor-table-cell {
-    @apply border border-table-border align-top text-center p-2 relative outline-none bg-table-cell-bg;
+    @apply border border-table-border align-top text-center px-3 py-2 relative outline-none bg-table-cell-bg;
+    min-width: 8rem;
+  }
+
+  /* Long text wraps instead of stretching a column across the page. */
+  .editor-table-cell > * {
+    max-width: 20rem;
+    margin-inline: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .editor-table-cell > [style*="text-align: left"] {
+    margin-left: 0;
+  }
+
+  .editor-table-cell > [style*="text-align: right"] {
+    margin-right: 0;
+  }
+
+  .editor-table-cell > .editor-code {
+    max-width: 32rem;
   }
 
   /* Table header cells */
@@ -1047,6 +1117,10 @@ body {
     --surface-dark: #f2f2f2;
     --table-header-bg: #f2f2f2;
     --text-link: #0b5d2a;
+    --leaf-strong: #17804a;
+    --pad-rule: rgba(23, 128, 74, 0.6);
+    --pad-hair: rgba(23, 128, 74, 0.22);
+    --pad-wash: rgba(23, 128, 74, 0.05);
   }
   html,
   body {
@@ -1144,11 +1218,431 @@ body {
 }
 .editor-heading-h1,
 .editor-heading-h2,
-.editor-heading-h3 {
+.editor-heading-h3,
+.editor-heading-h4 {
   scroll-margin-top: 5.5rem;
 }
 @media print {
   .toc-rail {
     display: none !important;
+  }
+}
+
+@layer components {
+  /* ── "/" menu sections ─────────────────────────────── */
+  .component-picker-menu {
+    width: 17rem;
+  }
+
+  .component-picker-menu ul {
+    max-height: min(22rem, 50vh);
+  }
+
+  .typeahead-popover li.picker-section,
+  .typeahead-popover p.picker-section {
+    @apply pointer-events-none mx-2 mt-2 cursor-default bg-transparent px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase leading-none tracking-[0.06em] text-[--text-tertiary];
+  }
+
+  .typeahead-popover li.picker-section:first-child,
+  .typeahead-popover p.picker-section:first-child {
+    @apply mt-0;
+  }
+
+  .typeahead-popover li.picker-section:hover {
+    @apply bg-transparent;
+  }
+
+  .component-picker-menu .item .icon {
+    @apply mr-2.5 shrink-0 text-[--text-secondary];
+  }
+
+  .component-picker-menu .item.selected .icon {
+    @apply text-foreground;
+  }
+
+  .component-picker-menu .item .shortcut {
+    @apply font-normal text-xs text-[--text-tertiary];
+  }
+
+  .picker-empty {
+    @apply px-4 py-2 text-sm text-[--text-tertiary];
+  }
+
+  /* ── Callout ──────────────────────────────────────── */
+  .editor-callout {
+    --callout-tone: var(--text-secondary);
+    @apply my-4 flex gap-3 rounded-squircle-sm px-4 py-3;
+    background: color-mix(in oklab, var(--callout-tone) 8%, transparent);
+    border: 1px solid color-mix(in oklab, var(--callout-tone) 18%, transparent);
+  }
+
+  .editor-callout[data-variant="tip"] {
+    --callout-tone: var(--leaf);
+  }
+
+  .editor-callout[data-variant="warning"] {
+    --callout-tone: var(--warn-text);
+  }
+
+  .editor-callout[data-variant="danger"] {
+    --callout-tone: var(--danger-text);
+  }
+
+  .editor-callout-icon {
+    @apply mt-[0.2rem] flex h-6 w-6 shrink-0 select-none items-center justify-center rounded-md border-0 bg-transparent p-0;
+    color: var(--callout-tone);
+  }
+
+  button.editor-callout-icon {
+    @apply cursor-pointer transition-colors duration-150;
+  }
+
+  .editor-input[contenteditable="false"] button.editor-callout-icon {
+    @apply cursor-default;
+  }
+
+  .editor-input[contenteditable="true"] button.editor-callout-icon:hover {
+    background: color-mix(in oklab, var(--callout-tone) 14%, transparent);
+  }
+
+  .editor-callout-body {
+    @apply min-w-0 flex-1;
+  }
+
+  .editor-callout-body > :first-child {
+    @apply mt-0;
+  }
+
+  .editor-callout-body > :last-child {
+    @apply mb-0;
+  }
+
+  /* ── Toggle ───────────────────────────────────────── */
+  .editor-toggle {
+    @apply my-2;
+  }
+
+  .editor-toggle-title {
+    @apply flex items-start gap-1;
+  }
+
+  .editor-toggle-title-text {
+    @apply relative min-w-0 flex-1 font-medium;
+  }
+
+  /* Placeholder for an empty title (Lexical renders a lone <br>). */
+  .editor-toggle-title-text:has(> br:only-child)::before {
+    content: "Toggle";
+    @apply pointer-events-none absolute text-[--text-tertiary];
+  }
+
+  .editor-toggle-chevron {
+    @apply -ml-1 mt-[0.15rem] flex h-6 w-6 shrink-0 cursor-pointer select-none items-center justify-center rounded-md border-0 bg-transparent p-0 text-[--text-tertiary] transition-[color,background-color] duration-150 hover:bg-[--row-active] hover:text-foreground;
+  }
+
+  .editor-toggle-chevron svg {
+    @apply transition-transform duration-200 ease-out;
+  }
+
+  .editor-toggle[data-open] > .editor-toggle-title > .editor-toggle-chevron svg {
+    transform: rotate(90deg);
+  }
+
+  .editor-toggle-content {
+    @apply ml-[1.1rem] border-l border-[--hairline] pl-4 pt-0.5;
+  }
+
+  div.editor-toggle:not([data-open]) > .editor-toggle-content {
+    display: none;
+  }
+
+  .editor-toggle-content > :first-child {
+    @apply mt-1;
+  }
+
+  .editor-toggle-content > :last-child {
+    @apply mb-1;
+  }
+
+  /* Read-only pages use native <details>, which works without JavaScript. */
+  details.editor-toggle > summary {
+    @apply cursor-pointer list-none;
+  }
+
+  details.editor-toggle > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  details.editor-toggle[open] > summary .editor-toggle-chevron svg {
+    transform: rotate(90deg);
+  }
+
+  details.editor-toggle:not([open]) > .editor-toggle-content {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .editor-toggle-chevron svg {
+      transition: none;
+    }
+  }
+
+  @media print {
+    .editor-toggle-content {
+      display: block !important;
+    }
+  }
+}
+
+/* Lexical can leave its empty menu anchor on the page after a pick; it must never swallow clicks. */
+[aria-label="Typeahead menu"] {
+  pointer-events: none;
+}
+[aria-label="Typeahead menu"] > * {
+  pointer-events: auto;
+}
+[aria-label="Typeahead menu"]:empty {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Green Columnar Pad: the note sheet.
+   A dark accounts pad: warm charcoal paper, leaf-green ruling,
+   ruled header fields, ledger tables. Square corners throughout.
+   ════════════════════════════════════════════════════════════════════ */
+@layer components {
+  .editor-area {
+    --fields-h: 3.6rem;
+    border-radius: 4px;
+  }
+
+  /* Ruled header fields */
+  .pad-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr);
+    height: var(--fields-h);
+    border-bottom: 4px double var(--pad-rule);
+  }
+
+  .pad-field {
+    @apply flex min-w-0 flex-col justify-center gap-1 px-6 sm:px-5;
+    border-right: 1px solid var(--pad-hair);
+  }
+
+  .pad-field:first-child {
+    @apply sm:pl-14;
+  }
+
+  .pad-field:last-child {
+    border-right: 0;
+  }
+
+  .pad-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--pad-label);
+  }
+
+  .pad-value {
+    @apply truncate font-mono text-[13.5px] leading-tight;
+    color: var(--text);
+  }
+
+  @media (max-width: 639px) {
+    .pad-fields {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .pad-field-access {
+      display: none;
+    }
+  }
+
+  .editor-placeholder {
+    top: calc(var(--fields-h) + 2.5rem);
+  }
+
+  @media (min-width: 640px) {
+    .editor-placeholder {
+      top: calc(var(--fields-h) + 3.5rem);
+    }
+  }
+
+  .editor-input {
+    caret-color: var(--leaf);
+  }
+
+  .editor-input ::selection {
+    background: rgba(var(--leaf-rgb), 0.24);
+  }
+
+  /* Headings: plain and strong; H4 is a pad label. */
+  .editor-heading-h1 {
+    @apply font-bold;
+    letter-spacing: -0.025em;
+  }
+
+  .editor-heading-h4 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--pad-label);
+  }
+
+  /* Quote and divider use the ruling ink. */
+  .editor-quote {
+    border-left: 1px solid var(--pad-rule);
+  }
+
+  .editor-horizontal-rule::after {
+    height: 4px;
+    background: transparent;
+    border-top: 1px solid var(--pad-rule);
+    border-bottom: 1px solid var(--pad-rule);
+  }
+
+  /* Lists: green markers. */
+  .editor-list-ul > .editor-listitem::marker,
+  .editor-list-ol > .editor-listitem::marker {
+    color: var(--pad-label);
+  }
+
+  .editor-list-ol > .editor-listitem::marker {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Checklists: square ruled boxes; done is a green tick in the box. */
+  .editor-listitem-unchecked::before,
+  .editor-listitem-checked::before {
+    border-radius: 2px;
+    border: 1.5px solid rgba(var(--text-rgb), 0.5);
+    background: transparent;
+  }
+
+  .editor-listitem-checked::before {
+    border-color: var(--pad-rule);
+    background: var(--pad-wash);
+  }
+
+  .editor-listitem-checked::after {
+    border-color: var(--pad-label);
+  }
+
+  .editor-listitem-checked {
+    color: var(--text-tertiary);
+    text-decoration-color: rgba(var(--text-rgb), 0.45);
+  }
+
+  /* Code: square, ruled. */
+  .editor-code {
+    border-radius: 3px;
+    border: 1px solid var(--pad-hair);
+  }
+
+  .editor-text-code {
+    border-radius: 3px;
+  }
+
+  /* ── Tables: green-ruled ledger ─────────────────────────────────── */
+  .editor-table {
+    border-radius: 0;
+    overflow: visible;
+    border-top: 1px solid var(--pad-rule);
+    border-bottom: 1px solid var(--pad-rule);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .editor-table::after {
+    content: none;
+  }
+
+  .editor-table-cell {
+    border: 0;
+    border-bottom: 1px solid var(--pad-hair);
+    border-left: 1px solid var(--pad-hair);
+    background: transparent;
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.97rem;
+    line-height: 1.6;
+  }
+
+  .editor-table-cell:first-child {
+    border-left: 0;
+  }
+
+  .editor-table-cell > * {
+    margin-inline: 0;
+  }
+
+  .editor-table-cell > [style*="text-align: center"] {
+    margin-inline: auto;
+  }
+
+  .editor-table-cell > [style*="text-align: right"] {
+    margin-left: auto;
+  }
+
+  /* Alternate rows. nth-of-type skips Lexical's <colgroup>. */
+  .editor-table tr:nth-of-type(even) > .editor-table-cell {
+    background: var(--pad-wash);
+  }
+
+  .editor-table-cell-header {
+    background: transparent;
+    font-weight: 600;
+  }
+
+  .editor-table tr:first-of-type > .editor-table-cell-header {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--pad-label);
+    vertical-align: bottom;
+    border-bottom: 4px double var(--pad-rule);
+    border-left-color: rgba(var(--leaf-rgb), 0.3);
+  }
+
+  .editor-table-add-columns:hover,
+  .editor-table-add-rows:hover {
+    background: var(--leaf);
+    color: var(--on-leaf);
+  }
+
+  /* ── Callouts: ruled boxes ──────────────────────────────────────── */
+  .editor-callout {
+    border-radius: 3px;
+    background: transparent;
+    border: 1px solid rgba(var(--text-rgb), 0.16);
+  }
+
+  .editor-callout[data-variant="tip"] {
+    border-color: var(--pad-rule);
+    background: var(--pad-wash);
+  }
+
+  .editor-callout[data-variant="warning"],
+  .editor-callout[data-variant="danger"] {
+    border-color: color-mix(in oklab, var(--callout-tone) 45%, transparent);
+  }
+
+  /* Toggles */
+  .editor-toggle-content {
+    border-left-color: var(--pad-hair);
+  }
+
+  @media print {
+    .editor-area {
+      border-radius: 0;
+    }
+    .pad-fields {
+      margin-bottom: 1.5rem;
+    }
+    .pad-field:first-child {
+      padding-left: 0;
+    }
   }
 }

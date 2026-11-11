@@ -2,12 +2,25 @@ import "katex/dist/katex.css";
 
 import { renderDocumentStatic } from "@/lib/static-render";
 
+import NoteFields, { formatNoteDate } from "./NoteFields";
+
 /** Editor-free, read-only rendering of a saved note. Ships almost no JavaScript. */
-export default function StaticNote({ content }: { content: object | null | undefined }) {
+export default function StaticNote({
+  content,
+  name,
+  access,
+  updatedAt,
+}: {
+  content: object | null | undefined;
+  name: string;
+  access: string;
+  updatedAt?: string | null;
+}) {
   const body = renderDocumentStatic(content, { equations: "katex" });
   return (
     <main id="main" className="editor-root">
       <article className="editor-area cursor-auto">
+        <NoteFields name={name} access={access} updatedAt={updatedAt} />
         <div className="editor-wrapper">
           {body ? (
             <div className="editor-input editor-static">{body}</div>
@@ -20,8 +33,4 @@ export default function StaticNote({ content }: { content: object | null | undef
   );
 }
 
-export function formatDay(iso: string | null | undefined) {
-  return iso
-    ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso))
-    : null;
-}
+export const formatDay = formatNoteDate;

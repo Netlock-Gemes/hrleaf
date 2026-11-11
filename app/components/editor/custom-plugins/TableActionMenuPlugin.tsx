@@ -529,6 +529,18 @@ function TableCellActionMenuContainer({
       !enabled,
     );
 
+    // In a table scrolled sideways, hide the button while its cell is out of view.
+    const scroller = tableCellParentNodeDOM.closest('.editor-table-scrollable-wrapper');
+    if (enabled && scroller) {
+      const cell = tableCellParentNodeDOM.getBoundingClientRect();
+      const view = scroller.getBoundingClientRect();
+      if (cell.right > view.right + 1 || cell.right < view.left + 24) {
+        menu.classList.remove(getTheme()?.tableCellActionButtonActiveContainer);
+        menu.classList.add(getTheme()?.tableCellActionButtonInactiveContainer);
+        return;
+      }
+    }
+
     if (enabled) {
       const tableCellRect = tableCellParentNodeDOM.getBoundingClientRect();
       const anchorRect = anchorElem.getBoundingClientRect();
@@ -562,9 +574,12 @@ function TableCellActionMenuContainer({
       editor.registerRootListener((rootElement, prevRootElement) => {
         if (prevRootElement) {
           prevRootElement.removeEventListener('mouseup', delayedCallback);
+          prevRootElement.removeEventListener('scroll', delayedCallback, true);
         }
         if (rootElement) {
           rootElement.addEventListener('mouseup', delayedCallback);
+          // Tables scroll sideways inside the root; keep the cell button with its cell.
+          rootElement.addEventListener('scroll', delayedCallback, { capture: true, passive: true });
           delayedCallback();
         }
       }),

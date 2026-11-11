@@ -128,7 +128,8 @@ function TableHoverActionsContainer({
             left: parentElement
               ? parentElement.offsetLeft
               : tableElemLeft - editorElemLeft,
-            top: tableElemBottom - editorElemY + 5 ,
+            // Below the wrapper, so the button clears a sideways scrollbar.
+            top: (parentElement ? parentElement.getBoundingClientRect().bottom : tableElemBottom) - editorElemY + 5,
             width: parentElement ? parentElement.offsetWidth : tableElemWidth,
           });
         } else if (hoveredColumnNode) {

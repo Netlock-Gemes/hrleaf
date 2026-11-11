@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 
 import ServiceWorker from "@/app/components/ServiceWorker";
+import TableOverflowHints from "@/app/components/TableOverflowHints";
 import { Toaster } from "@/components/ui/sonner";
 import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
 import { THEME_SCRIPT } from "@/lib/theme";
@@ -78,6 +79,7 @@ export default function RootLayout({
         </a>
         {children}
         <Toaster position="bottom-center" />
+        <TableOverflowHints />
         <ServiceWorker />
       </body>
     </html>

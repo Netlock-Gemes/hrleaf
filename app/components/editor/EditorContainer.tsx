@@ -79,6 +79,7 @@ import { restorePrevious, saveDocument, saveSharedDocument } from "@/server/docu
 import { ShareLink, Visibility } from "@/types";
 
 import NewNoteDialog from "../NewNoteDialog";
+import NoteFields, { accessLabel } from "../NoteFields";
 import PaletteButton from "../PaletteButton";
 import ShareDialog, { copyText, shareUrl } from "../ShareDialog";
 import SiteHeader from "../SiteHeader";
@@ -142,6 +143,7 @@ export default function EditorContainer({
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [previousAt, setPreviousAt] = useState(previousUpdatedAt);
+  const [savedAt, setSavedAt] = useState(updatedAt);
   const [, forceTick] = useState(0);
 
   const [conflictOpen, setConflictOpen] = useState(false);
@@ -335,6 +337,7 @@ export default function EditorContainer({
       if (result.ok) {
         lastSavedRef.current = serialised;
         baseRef.current = result.updated_at;
+        setSavedAt(result.updated_at);
         clearDraft(draftKey);
         setPreviousAt(result.previous_updated_at);
         setDirty(computeDirty());
@@ -502,6 +505,7 @@ export default function EditorContainer({
     }
     applyContent(result.content);
     baseRef.current = result.updated_at;
+    setSavedAt(result.updated_at);
     setPreviousAt(result.previous_updated_at);
     toast.success(isUndo ? "Switched back." : "Previous version restored.", {
       description: isUndo ? undefined : "The version you replaced is kept as the previous one.",
@@ -846,6 +850,18 @@ export default function EditorContainer({
         editable={!locked}
         onEditorStateChange={handleEditorStateChange}
         preview={preview}
+        header={
+          <NoteFields
+            name={slug}
+            updatedAt={savedAt}
+            access={accessLabel({
+              shared: isShared,
+              visibility: access.visibility,
+              publicLink: !!access.share,
+              locked,
+            })}
+          />
+        }
       />
       </main>
 

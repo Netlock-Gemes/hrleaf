@@ -5,3 +5,5 @@ export { LinksPlugin } from './LinksPlugin';
 export { TablePlugin } from './TablePlugin';
 
 export { FloatingFormatToolbarPlugin } from './FloatingFormatToolbarPlugin';
+export { BlocksPlugin, INSERT_CALLOUT_COMMAND, INSERT_TOGGLE_COMMAND } from './BlocksPlugin';
+export { NoteLinkPlugin } from './NoteLinkPlugin';

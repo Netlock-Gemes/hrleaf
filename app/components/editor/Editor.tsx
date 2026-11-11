@@ -24,13 +24,22 @@ import { TableCellNode, TableNode, TableRowNode } from '@lexical/table';
 import { EditorState, LexicalEditor } from 'lexical';
 import { MutableRefObject, ReactElement, ReactNode, useEffect, useState } from 'react';
 
-import { EquationNode, InlineTableInputNode } from './custom-nodes';
 import {
+  CalloutNode,
+  EquationNode,
+  InlineTableInputNode,
+  ToggleContainerNode,
+  ToggleContentNode,
+  ToggleTitleNode,
+} from './custom-nodes';
+import {
+  BlocksPlugin,
   CodeHighlightPlugin,
   ComponentPickerPlugin,
   EquationPlugin,
   FloatingFormatToolbarPlugin,
   LinksPlugin,
+  NoteLinkPlugin,
   TablePlugin,
 } from './custom-plugins';
 import { HRLEAF_TRANSFORMERS } from './custom-transformers/HRLeafTransformers';
@@ -43,6 +52,8 @@ interface EditorProps {
   editorRef?: MutableRefObject<LexicalEditor | null>;
   /** Server-rendered copy of the content, shown until the editor has mounted. */
   preview?: ReactNode;
+  /** Ruled header fields across the top of the sheet. */
+  header?: ReactNode;
 }
 
 const theme = DefaultTheme;
@@ -57,6 +68,7 @@ export default function Editor({
   onEditorStateChange,
   editorRef,
   preview,
+  header,
 }: EditorProps): ReactElement {
   // Instant first paint: show static HTML until Lexical has rendered the real thing.
   const [mounted, setMounted] = useState(false);
@@ -93,6 +105,10 @@ export default function Editor({
       InlineTableInputNode,
       HorizontalRuleNode,
       EquationNode,
+      CalloutNode,
+      ToggleContainerNode,
+      ToggleTitleNode,
+      ToggleContentNode,
     ],
     editorState: initialContent,
     editable,
@@ -102,6 +118,7 @@ export default function Editor({
     <div className="editor-root">
       <LexicalComposer initialConfig={editorConfig}>
         <div className="editor-area">
+          {header}
           <RichTextPlugin
             contentEditable={
               <div ref={onRef} className="editor-wrapper">
@@ -144,6 +161,8 @@ export default function Editor({
           <LinksPlugin/>
           <TablePlugin anchorElem={floatingAnchorElem} />
           <EquationPlugin />
+          <BlocksPlugin />
+          {editable ? <NoteLinkPlugin /> : null}
         </div>
       </LexicalComposer>
     </div>
