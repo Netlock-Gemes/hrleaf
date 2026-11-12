@@ -481,11 +481,38 @@ function blockMd(node: N): string {
 }
 
 function docMd(nodes: N[] | undefined): string {
-  return (nodes ?? []).map(blockMd).join("\n\n");
+  return blocksMarkdown(nodes ?? []).text;
+}
+
+export type BlockSpan = { index: number; start: number; end: number };
+
+/**
+ * Markdown for a list of top-level blocks, joined by blank lines, plus where
+ * each block sits in that text. Empty blocks (blank paragraphs) are skipped in
+ * the text but keep their index, so edits can map text back to blocks.
+ */
+export function blocksMarkdown(blocks: object[]): { text: string; spans: BlockSpan[] } {
+  let text = "";
+  const spans: BlockSpan[] = [];
+  blocks.forEach((b, index) => {
+    const md = blockMd(b as N).replace(/^\n+|\s+$/g, "");
+    if (!md) return;
+    if (text) text += "\n\n";
+    spans.push({ index, start: text.length, end: text.length + md.length });
+    text += md;
+  });
+  return { text, spans };
 }
 
 /** Converts a stored Lexical editor state back to Markdown. */
 export function lexicalToMarkdown(content: object | null | undefined): string {
   const root = (content as { root?: N } | null)?.root;
-  return docMd(root?.children).replace(/\n{3,}/g, "\n\n").trim();
+  return docMd(root?.children);
+}
+
+/** Top-level headings: their level (1-6), text and position among the root's children. */
+export function outline(blocks: object[]): { level: number; text: string; index: number }[] {
+  return (blocks as N[]).flatMap((b, index) =>
+    b.type === "heading" ? [{ level: Number(b.tag?.slice(1)) || 2, text: plain(b).trim(), index }] : [],
+  );
 }

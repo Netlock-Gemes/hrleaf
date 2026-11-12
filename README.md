@@ -161,14 +161,25 @@ HRLeaf has an [MCP](https://modelcontextprotocol.io) endpoint at `/api/mcp`, so 
 
    For local development use `http://localhost:3000/api/mcp`.
 
+**Claude app on Android / iPhone, and claude.ai.** Their custom connectors can't send a token header, so there's a second address with the secret inside it:
+
+1. Set `MCP_URL_SECRET` (32+ random characters, different from `MCP_TOKEN`) in Vercel and redeploy.
+2. On claude.ai in a browser: Settings → Connectors → Add custom connector. Name `HRLeaf`, URL `https://<your-site>/api/mcp/<MCP_URL_SECRET>`, no OAuth.
+3. It appears in the mobile app on the same account; turn it on in a chat's tools menu.
+
+Anyone who has that address can write to your notes, and it shows in Vercel's request logs. Keep it private; if it leaks, change `MCP_URL_SECRET` and update the connector. A wrong secret gets a plain 404. (This is a stopgap until HRLeaf supports OAuth sign-in for connectors.)
+
 | Tool | Does |
 | --- | --- |
-| `hrleaf_create_note` | New note from a title and Markdown. The name is made from the title (`Q3 Launch Plan` → `q3-launch-plan`); if it's taken, `-2`, `-3`… is added. Team by default, or Only me |
-| `hrleaf_update_note` | Append, prepend or replace a note's text. Replacing keeps the old text as the previous version |
-| `hrleaf_read_note` | A note as Markdown |
-| `hrleaf_search_notes` | Recent notes, or those whose name contains a word |
+| `hrleaf_create_note` | New note from a title and Markdown. The name is made from the title (`Q3 Launch Plan` → `q3-launch-plan`). If it's taken, `-2`, `-3`… is added, or with `if_exists: "append"` the text is added to the existing note, so "put this in my meeting notes" is one call |
+| `hrleaf_update_note` | Append, prepend or replace, for the whole note or just one section (`section: "Tasks"`). An added list item joins the list next to it |
+| `hrleaf_edit_note` | Find-and-replace on the note's Markdown (`old_text` → `new_text`), several at once, all or nothing. Only the blocks touched are rewritten, so the rest keeps its exact formatting |
+| `hrleaf_read_note` | A note as Markdown, or just its headings (`outline_only`), or one section |
+| `hrleaf_search_notes` | Finds notes by words in their name or text; without a query, lists recent notes |
 
-Markdown becomes real HRLeaf blocks: headings, lists, checklists, tables, code, equations, `> [!TIP]` callouts and `<details>` toggles. The token acts as the admin, so treat it like the admin password. Edits show as made by `MCP_AUTHOR` (default `claude`), go through the normal save path (locked notes are refused, conflicts are detected) and new notes appear in the Activity log.
+The tools only write and read. They can't share, change who can see a note, lock or delete. When someone else saved the note at the same moment, a change is re-applied to the newer text instead of overwriting it.
+
+Markdown becomes real HRLeaf blocks: headings, lists, checklists, tables, code, equations, `> [!TIP]` callouts and `<details>` toggles. The token can open every note, so treat it like the admin password. Edits show as made by `MCP_AUTHOR` (default `claude`), go through the normal save path (locked notes are refused; replacing keeps the previous version) and new notes appear in the Activity log.
 
 ## Security
 

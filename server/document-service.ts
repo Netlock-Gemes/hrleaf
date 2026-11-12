@@ -19,7 +19,15 @@ import {
   Visibility,
 } from "@/types";
 
-import { RESERVED_SLUGS, SHARE_TOKEN_PATTERN, countWords, derivedFields, escapeRegex, generateRandomSlug } from "./document-utils";
+import {
+  RESERVED_SLUGS,
+  SHARE_TOKEN_PATTERN,
+  countWords,
+  derivedFields,
+  escapeRegex,
+  extractPreview,
+  generateRandomSlug,
+} from "./document-utils";
 import { connectToMongo, documents } from "./mongo-config";
 
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024; // 2 MB of editor JSON
@@ -56,12 +64,15 @@ function toEditorDocument(doc: Partial<Document> & { slug: string }): EditorDocu
   };
 }
 
-/** Wrapped in React cache so metadata + page share one query per request. */
-export const getEditorDocument = cache(async (slug: string): Promise<EditorDocument | null> => {
+/** Always reads the database (no per-request cache), for read-modify-write loops. */
+export async function loadEditorDocument(slug: string): Promise<EditorDocument | null> {
   const col = await documents();
   const doc = await col.findOne({ slug }, { projection: EDITOR_PROJECTION });
   return doc ? toEditorDocument(doc) : null;
-});
+}
+
+/** Wrapped in React cache so metadata + page share one query per request. */
+export const getEditorDocument = cache(loadEditorDocument);
 
 /** The note behind a public share link, or null if the link is unknown or the note is in the trash. */
 export const getSharedDocument = cache(async (token: string): Promise<EditorDocument | null> => {
@@ -401,6 +412,52 @@ export async function listNotesFor(viewer: Viewer, q: string, page: number) {
     col.countDocuments(match),
   ]);
   return { rows: rows.map((r) => toSummary(r as ListRow)), total, pageSize: HOME_PAGE_SIZE };
+}
+
+export type TextSearchHit = { slug: string; updated_at: string | null; snippet: string; inName: boolean };
+
+/**
+ * Notes whose name or text contains every word of `q` (any case), newest first,
+ * name matches ahead of text matches. Scans the most recent `scanLimit` notes'
+ * text on the server, which is fine at notebook scale and needs no extra field.
+ */
+export async function searchNoteText(
+  viewer: Viewer,
+  q: string,
+  limit: number,
+  scanLimit = 2000,
+): Promise<{ hits: TextSearchHit[]; scanned: number }> {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const col = await documents();
+  const match: Filter<Document> = { ...live, is_empty: { $ne: true } };
+  if (viewer.role !== "admin") match.visibility = { $ne: "private" };
+  const cursor = col
+    .find(match, { projection: { _id: 0, slug: 1, updated_at: 1, content: 1 } })
+    .sort({ updated_at: -1 })
+    .limit(scanLimit)
+    .batchSize(200);
+
+  const named: TextSearchHit[] = [];
+  const texted: TextSearchHit[] = [];
+  let scanned = 0;
+  try {
+    for await (const doc of cursor) {
+      scanned++;
+      const name = doc.slug.replace(/-/g, " ");
+      const body = extractPreview(doc.content, Number.MAX_SAFE_INTEGER);
+      const lower = body.toLowerCase();
+      if (!words.every((w) => name.includes(w) || doc.slug.includes(w) || lower.includes(w))) continue;
+      const at = Math.max(0, lower.indexOf(words.find((w) => lower.includes(w)) ?? ""));
+      const from = Math.max(0, at - 50);
+      const snippet = (from > 0 ? "…" : "") + body.slice(from, from + 160).trim() + (body.length > from + 160 ? "…" : "");
+      const hit = { slug: doc.slug, updated_at: doc.updated_at ?? null, snippet, inName: words.every((w) => name.includes(w) || doc.slug.includes(w)) };
+      (hit.inName ? named : texted).push(hit);
+      if (named.length >= limit) break;
+    }
+  } finally {
+    await cursor.close();
+  }
+  return { hits: [...named, ...texted].slice(0, limit), scanned };
 }
 
 /** Names only, for the command palette and quick search. */

@@ -7,6 +7,9 @@ All notable changes to HRLeaf are documented here.
 ### Added
 
 - MCP endpoint (`/api/mcp`) so Claude Code can create, read, search and append to notes. Markdown is converted to real HRLeaf blocks (tables, callouts, toggles, equations, checklists); note names are made from the title. Off unless `MCP_TOKEN` is set
+- MCP writing is faster: find-and-replace edits (`hrleaf_edit_note`) that rewrite only the blocks they touch, adding to or replacing one section by its heading, reading just a note's outline or one section, "create or add to existing" in one call, search inside note text, list items that join the list next to them, and automatic re-apply when someone else saved at the same moment
+- MCP tools no longer set visibility; they only write and read
+- Second MCP address, `/api/mcp/<MCP_URL_SECRET>`, for claude.ai custom connectors and the Claude mobile apps, which can't send a token header. Off unless `MCP_URL_SECRET` is set
 
 ## [1.3.0] - 2026-11-12
 
