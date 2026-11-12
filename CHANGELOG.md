@@ -11,6 +11,16 @@ All notable changes to HRLeaf are documented here.
 - MCP tools no longer set visibility; they only write and read
 - Second MCP address, `/api/mcp/<MCP_URL_SECRET>`, for claude.ai custom connectors and the Claude mobile apps, which can't send a token header. Off unless `MCP_URL_SECRET` is set
 
+### Admin
+
+- The note's `⋯` menu has an Admin section: Share settings, Lock / Unlock note, and Move to trash (with a confirmation). Lock and trash are also in the command palette
+- Share settings respond instantly: changes show at once and save in the background in click order, and a failed save puts the setting back. Each click is now one database write instead of re-rendering the whole admin page twice (list, counts, stats, storage) and waiting for the activity log; the admin table refreshes once when the dialog closes
+- Admin actions write the activity log after responding
+
+### Fixed
+
+- The header on note pages starts and ends exactly with the sheet; its content was inset 24px on each side
+
 ## [1.3.0] - 2026-11-12
 
 A new sheet design, better tables and more blocks.

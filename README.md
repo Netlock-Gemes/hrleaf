@@ -86,6 +86,7 @@ Notes with two or more headings get a contents list beside the page on wide scre
 - **Download Markdown**: saves the note as a `.md` file
 - **Export PDF**: opens the print dialog with a clean, light print layout
 - **Focus mode**: the header hides while you type and returns when you move the mouse
+- **Admin** (admin only): **Share settings**, **Lock / Unlock note**, and **Move to trash** (asks first; restorable from the admin area for 30 days)
 
 The note name in the header opens your **recent notes** (stored in this browser only).
 

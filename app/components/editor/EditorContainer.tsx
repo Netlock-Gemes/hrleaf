@@ -28,6 +28,7 @@ import {
   Link2,
   Loader2,
   Lock,
+  LockOpen,
   MoreHorizontal,
   Plus,
   Printer,
@@ -69,12 +70,14 @@ import {
   RecentNote,
   clearDraft,
   clearRecent,
+  forgetRecent,
   readDraft,
   readPref,
   recordRecent,
   writeDraft,
   writePref,
 } from "@/lib/recent";
+import { deleteDocumentsAction, setLockedAction } from "@/server/admin-actions";
 import { restorePrevious, saveDocument, saveSharedDocument } from "@/server/document-actions";
 import { ShareLink, Visibility } from "@/types";
 
@@ -148,6 +151,9 @@ export default function EditorContainer({
 
   const [conflictOpen, setConflictOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [trashing, setTrashing] = useState(false);
+  const [lockBusy, setLockBusy] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
 
@@ -447,6 +453,58 @@ export default function EditorContainer({
     });
   };
 
+  /* ------------------------------ admin: lock, trash ------------------------------ */
+
+  const toggleLock = async () => {
+    if (lockBusy) return;
+    const next = !locked;
+    // Locking with unsaved changes would strand them: save first.
+    if (next && computeDirty()) {
+      await save();
+      if (computeDirty()) {
+        toast.error("Save your changes before locking the note.");
+        return;
+      }
+    }
+    setLockBusy(true);
+    setLocked(next);
+    const res = await setLockedAction([slug], next, { refresh: false }).catch(() => ({
+      ok: false as const,
+      message: "Couldn't reach the server.",
+    }));
+    setLockBusy(false);
+    if (!res.ok) {
+      setLocked(!next);
+      toast.error(res.message);
+      return;
+    }
+    toast.success(next ? "Locked. Nobody can edit it until it's unlocked." : "Unlocked. It can be edited again.", {
+      duration: 2000,
+    });
+  };
+
+  const moveToTrash = async () => {
+    setTrashing(true);
+    const res = await deleteDocumentsAction([slug], { refresh: false }).catch(() => ({
+      ok: false as const,
+      message: "Couldn't reach the server.",
+    }));
+    if (!res.ok) {
+      setTrashing(false);
+      toast.error(res.message);
+      return;
+    }
+    clearDraft(draftKey);
+    forgetRecent(slug);
+    setTrashOpen(false);
+    toast.success(`Moved ${slug} to the trash`, {
+      description: "It can be restored from the admin area for 30 days.",
+      duration: 3500,
+    });
+    allowLeaveRef.current = true;
+    router.push("/");
+  };
+
   /* -------------------------------- navigation ------------------------------- */
 
   const navigate = (href: string) => {
@@ -537,8 +595,8 @@ export default function EditorContainer({
   const modKey = isMac ? "⌘" : "Ctrl+";
 
   // Editor actions and headings in the command palette while this note is open.
-  const commandsRef = useRef({ downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty });
-  commandsRef.current = { downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty };
+  const commandsRef = useRef({ downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty, toggleLock });
+  commandsRef.current = { downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty, toggleLock };
   useEffect(() => {
     const c = () => commandsRef.current;
     const icon = (I: typeof Download) => <I className="h-4 w-4" aria-hidden />;
@@ -578,7 +636,18 @@ export default function EditorContainer({
             },
           ]),
       ...(isAdmin
-        ? [{ id: "share", group: "This note" as const, label: "Share settings…", keywords: "public link only me team", icon: icon(Settings2), run: () => setShareOpen(true) }]
+        ? [
+            { id: "share", group: "This note" as const, label: "Share settings…", keywords: "public link only me team", icon: icon(Settings2), run: () => setShareOpen(true) },
+            {
+              id: "lock",
+              group: "This note" as const,
+              label: locked ? "Unlock note" : "Lock note",
+              keywords: "read only protect",
+              icon: icon(locked ? LockOpen : Lock),
+              run: () => void c().toggleLock(),
+            },
+            { id: "trash", group: "This note" as const, label: "Move to trash…", keywords: "delete remove", icon: icon(Trash2), run: () => setTrashOpen(true) },
+          ]
         : []),
       ...headings.map((h) => ({
         id: `h:${h.key}`,
@@ -592,6 +661,11 @@ export default function EditorContainer({
     ]);
   }, [headings, locked, focusMode, isShared, isAdmin, slug, modKey, jumpTo, copy]);
   const headerHidden = focusMode && typing;
+  const shareSummary = access.share
+    ? `Public link on · ${access.share.mode === "write" ? "can edit" : "read only"}`
+    : access.visibility === "private"
+      ? "Only you · no public link"
+      : "Team · no public link";
   const otherRecent = recent.filter((r) => r.slug !== slug);
 
   return (
@@ -729,13 +803,7 @@ export default function EditorContainer({
                     <Settings2 className="h-4 w-4" aria-hidden />
                     <div className="flex flex-col">
                       <span>Share settings…</span>
-                      <span className="text-[12px] text-muted-foreground">
-                        {access.share
-                          ? `Public link on · ${access.share.mode === "write" ? "can edit" : "read only"}`
-                          : access.visibility === "private"
-                            ? "Only you · no public link"
-                            : "Team · no public link"}
-                      </span>
+                      <span className="text-[12px] text-muted-foreground">{shareSummary}</span>
                     </div>
                   </DropdownMenuItem>
                   {access.share ? (
@@ -778,11 +846,6 @@ export default function EditorContainer({
                 </DropdownMenuItem>
               ) : (
                 <>
-                  {isAdmin ? (
-                    <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => setShareOpen(true)}>
-                      <Settings2 className="h-4 w-4" aria-hidden /> Share settings…
-                    </DropdownMenuItem>
-                  ) : null}
                   <DropdownMenuItem className="gap-2 sm:hidden" onSelect={() => copy(`${location.origin}/${slug}`, "Link copied")}>
                     <Link2 className="h-4 w-4" aria-hidden /> Copy link
                   </DropdownMenuItem>
@@ -817,6 +880,34 @@ export default function EditorContainer({
               <DropdownMenuCheckboxItem checked={focusMode} onCheckedChange={(v) => toggleFocus(!!v)}>
                 Focus mode
               </DropdownMenuCheckboxItem>
+              {isAdmin && !isShared ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[12px] font-normal text-muted-foreground">Admin</DropdownMenuLabel>
+                  <DropdownMenuItem className="gap-2" onSelect={() => setShareOpen(true)}>
+                    <Settings2 className="h-4 w-4" aria-hidden />
+                    <div className="flex flex-col">
+                      <span>Share settings…</span>
+                      <span className="text-[12px] text-muted-foreground">{shareSummary}</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2" disabled={lockBusy} onSelect={() => void toggleLock()}>
+                    {locked ? <LockOpen className="h-4 w-4" aria-hidden /> : <Lock className="h-4 w-4" aria-hidden />}
+                    <div className="flex flex-col">
+                      <span>{locked ? "Unlock note" : "Lock note"}</span>
+                      <span className="text-[12px] text-muted-foreground">
+                        {locked ? "Let people edit it again" : "Read only for everyone"}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="gap-2 text-[--danger-text] focus:bg-destructive/15 focus:text-[--danger-text]"
+                    onSelect={() => setTrashOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden /> Move to trash…
+                  </DropdownMenuItem>
+                </>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -906,6 +997,36 @@ export default function EditorContainer({
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
               Save and leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Move to trash (admin) */}
+      <AlertDialog open={trashOpen} onOpenChange={(o) => !trashing && setTrashOpen(o)}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move this note to the trash?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-mono text-foreground">{slug}</span> disappears for everyone, and its share link stops
+              working. You can restore it from the admin area for 30 days; after that it&apos;s deleted for good.
+              {dirty && !locked ? (
+                <span className="mt-2 block text-[--warn-text]">Your unsaved changes will be discarded.</span>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={trashing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={trashing}
+              onClick={(e) => {
+                e.preventDefault();
+                void moveToTrash();
+              }}
+            >
+              {trashing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+              Move to trash
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

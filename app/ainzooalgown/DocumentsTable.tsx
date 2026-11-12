@@ -785,6 +785,7 @@ export default function DocumentsTable({
         visibility={sharing?.visibility ?? "team"}
         open={sharing !== null}
         onOpenChange={(o) => !o && setSharing(null)}
+        refreshOnClose
       />
       <LinksDialog links={links} onClose={() => setLinks(null)} />
     </section>

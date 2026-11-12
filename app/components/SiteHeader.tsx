@@ -28,9 +28,12 @@ export default function SiteHeader({
     <header
       className={`${sticky ? "sticky top-0" : ""} z-30 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 print:hidden`}
     >
+      {/* Note width: same side margins as the sheet (.editor-root), so the header starts and ends with it.
+          Wide (admin): padding inside the box, matching the admin pages' <main>. */}
+      <div className={wide ? "" : "px-3 sm:px-6"}>
       <div
-        className={`mx-auto flex h-14 w-full items-center gap-2 px-3 sm:gap-3 sm:px-6 ${
-          wide ? "max-w-6xl" : "max-w-[52rem] sm:px-0"
+        className={`mx-auto flex h-14 w-full items-center gap-2 sm:gap-3 ${
+          wide ? "max-w-6xl px-3 sm:px-6" : "max-w-[52rem]"
         }`}
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -59,6 +62,7 @@ export default function SiteHeader({
         {children ? (
           <div className="flex shrink-0 items-center gap-1">{children}</div>
         ) : null}
+      </div>
       </div>
     </header>
   );

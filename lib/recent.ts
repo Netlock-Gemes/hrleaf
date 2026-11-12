@@ -26,6 +26,15 @@ export function recordRecent(slug: string): RecentNote[] {
   return next;
 }
 
+/** Drop one note from the list (e.g. it was moved to the trash). */
+export function forgetRecent(slug: string) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(readRecent().filter((r) => r.slug !== slug)));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function clearRecent() {
   try {
     localStorage.removeItem(KEY);
