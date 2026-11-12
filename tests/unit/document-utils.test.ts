@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { isDocumentContentEmpty } from "@/lib/content";
-import { RESERVED_SLUGS, SHARE_TOKEN_PATTERN, countWords, derivedFields, extractPreview, normaliseSlug } from "@/server/document-utils";
+import { RESERVED_SLUGS, SHARE_TOKEN_PATTERN, countWords, derivedFields, extractPreview, normaliseSlug, slugify } from "@/server/document-utils";
 
 const doc = (...paragraphs: string[]) => ({
   root: {
@@ -47,5 +47,19 @@ describe("share tokens", () => {
     expect(SHARE_TOKEN_PATTERN.test("abcDEF123_-x")).toBe(true);
     expect(SHARE_TOKEN_PATTERN.test("short")).toBe(false);
     expect(SHARE_TOKEN_PATTERN.test("abcDEF123_-x/")).toBe(false);
+  });
+});
+
+describe("slugify", () => {
+  it("makes note names from titles", () => {
+    expect(slugify("Q3 Launch Plan")).toBe("q3-launch-plan");
+    expect(slugify("  Café notes — what's next?! ")).toBe("cafe-notes-whats-next");
+    expect(slugify("日本語")).toBe("");
+  });
+  it("cuts long titles at a word, leaving room for a suffix", () => {
+    const s = slugify("a very long title that keeps going on and on well past the limit");
+    expect(s.length).toBeLessThanOrEqual(48);
+    expect(s.endsWith("-")).toBe(false);
+    expect(normaliseSlug(`${s}-12`)).toBe(`${s}-12`);
   });
 });

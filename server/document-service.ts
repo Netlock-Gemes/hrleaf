@@ -19,7 +19,7 @@ import {
   Visibility,
 } from "@/types";
 
-import { SHARE_TOKEN_PATTERN, countWords, derivedFields, escapeRegex, generateRandomSlug } from "./document-utils";
+import { RESERVED_SLUGS, SHARE_TOKEN_PATTERN, countWords, derivedFields, escapeRegex, generateRandomSlug } from "./document-utils";
 import { connectToMongo, documents } from "./mongo-config";
 
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024; // 2 MB of editor JSON
@@ -658,6 +658,25 @@ export async function suggestAvailableSlugs(count: number): Promise<string[]> {
     (await col.find({ slug: { $in: candidates } }, { projection: { slug: 1 } }).toArray()).map((d) => d.slug),
   );
   return candidates.filter((s) => !taken.has(s)).slice(0, count);
+}
+
+/**
+ * `base` if nobody has it (including notes in the trash), else `base-2`, `base-3`...
+ * Reserved route names always get a suffix.
+ */
+export async function nextFreeSlug(base: string): Promise<string> {
+  const col = await documents();
+  const taken = new Set(
+    (
+      await col
+        .find({ slug: { $regex: `^${escapeRegex(base)}(-\\d+)?$` } }, { projection: { _id: 0, slug: 1 } })
+        .toArray()
+    ).map((d) => d.slug),
+  );
+  if (!taken.has(base) && !RESERVED_SLUGS.has(base)) return base;
+  for (let n = 2; ; n++) {
+    if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+  }
 }
 
 /** Pick an unused random slug, checking several candidates in one query. */

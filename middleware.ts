@@ -22,8 +22,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except public pages, share links, assets and metadata files.
+  // Everything except public pages, share links, the MCP endpoint (it checks its own token), assets and metadata files.
   matcher: [
-    "/((?!login|privacy|s/|_next/|favicon|logo/|fonts/|robots.txt|manifest|sw.js|offline.html|opengraph-image|twitter-image|.*\\.(?:png|jpg|svg|ico|webp|txt|xml|json)$).*)",
+    "/((?!login|privacy|s/|api/mcp|_next/|favicon|logo/|fonts/|robots.txt|manifest|sw.js|offline.html|opengraph-image|twitter-image|.*\\.(?:png|jpg|svg|ico|webp|txt|xml|json)$).*)",
   ],
 };

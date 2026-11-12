@@ -147,6 +147,29 @@ npm run dev            # http://localhost:3000
 
 On first start the app creates its indexes (including the trash and activity-log expiry) and fills in preview/size fields for existing notes automatically. Notes from before accounts existed become **Team** notes.
 
+## Writing notes from Claude Code (MCP)
+
+HRLeaf has an [MCP](https://modelcontextprotocol.io) endpoint at `/api/mcp`, so Claude Code (or any MCP client) can write notes for you: *"add these meeting notes to HRLeaf"*.
+
+1. Set `MCP_TOKEN` (32+ random characters) in `.env` locally, or in Vercel → Settings → Environment Variables, then redeploy. Without it the endpoint is a 404.
+2. Connect Claude Code:
+
+   ```bash
+   claude mcp add --transport http --scope user hrleaf https://<your-site>/api/mcp \
+     --header "Authorization: Bearer <MCP_TOKEN>"
+   ```
+
+   For local development use `http://localhost:3000/api/mcp`.
+
+| Tool | Does |
+| --- | --- |
+| `hrleaf_create_note` | New note from a title and Markdown. The name is made from the title (`Q3 Launch Plan` → `q3-launch-plan`); if it's taken, `-2`, `-3`… is added. Team by default, or Only me |
+| `hrleaf_update_note` | Append, prepend or replace a note's text. Replacing keeps the old text as the previous version |
+| `hrleaf_read_note` | A note as Markdown |
+| `hrleaf_search_notes` | Recent notes, or those whose name contains a word |
+
+Markdown becomes real HRLeaf blocks: headings, lists, checklists, tables, code, equations, `> [!TIP]` callouts and `<details>` toggles. The token acts as the admin, so treat it like the admin password. Edits show as made by `MCP_AUTHOR` (default `claude`), go through the normal save path (locked notes are refused, conflicts are detected) and new notes appear in the Activity log.
+
 ## Security
 
 - Passwords are hashed with scrypt; sessions are HMAC-signed, `httpOnly` cookies (admin 7 days, members 30 days).

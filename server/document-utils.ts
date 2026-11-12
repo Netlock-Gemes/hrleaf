@@ -37,6 +37,25 @@ export function normaliseSlug(input: string): string | null {
   return SLUG_PATTERN.test(slug) ? slug : null;
 }
 
+/**
+ * Turn a title into a note name: "Q3 Plan — Café notes!" -> "q3-plan-cafe-notes".
+ * Kept to 48 characters (cut at a word) so a "-2" suffix still fits the 64 limit.
+ * Returns "" when nothing usable is left (e.g. a title in another script).
+ */
+export function slugify(title: string, max = 48): string {
+  const s = String(title)
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const dash = cut.lastIndexOf("-");
+  return (dash >= 16 ? cut.slice(0, dash) : cut).replace(/-+$/, "");
+}
+
 type LexNode = {
   type?: string;
   text?: string;

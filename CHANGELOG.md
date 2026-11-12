@@ -2,6 +2,12 @@
 
 All notable changes to HRLeaf are documented here.
 
+## [Unreleased]
+
+### Added
+
+- MCP endpoint (`/api/mcp`) so Claude Code can create, read, search and append to notes. Markdown is converted to real HRLeaf blocks (tables, callouts, toggles, equations, checklists); note names are made from the title. Off unless `MCP_TOKEN` is set
+
 ## [1.3.0] - 2026-11-12
 
 A new sheet design, better tables and more blocks.
