@@ -525,8 +525,24 @@ export async function getAdminStats(): Promise<AdminStats> {
 
 const ATLAS_FREE_LIMIT = 512 * 1024 * 1024;
 
-/** How much of the Atlas free tier is in use. The cluster figure needs listDatabases, which may be refused. */
-export async function getStorageInfo(): Promise<StorageInfo> {
+const STORAGE_TTL_MS = 10 * 60_000;
+const storageCache = globalThis as unknown as { _storageInfo?: { at: number; value: Promise<StorageInfo> } };
+
+/**
+ * How much of the Atlas free tier is in use. It moves slowly, so it's kept for
+ * 10 minutes per server instance instead of asking Atlas on every admin page.
+ */
+export function getStorageInfo(): Promise<StorageInfo> {
+  const hit = storageCache._storageInfo;
+  if (hit && Date.now() - hit.at < STORAGE_TTL_MS) return hit.value;
+  const value = readStorageInfo();
+  storageCache._storageInfo = { at: Date.now(), value };
+  value.catch(() => (storageCache._storageInfo = undefined));
+  return value;
+}
+
+/** The cluster figure needs listDatabases, which may be refused. */
+async function readStorageInfo(): Promise<StorageInfo> {
   const db = await connectToMongo();
   const [stats, cluster] = await Promise.all([
     db.command({ dbStats: 1 }).catch(() => null),

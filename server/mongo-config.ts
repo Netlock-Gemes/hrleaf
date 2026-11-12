@@ -44,11 +44,22 @@ async function backfillDerivedFields(db: Db) {
 async function connect(): Promise<Db> {
   const client = new MongoClient(MONGO_URI, {
     maxPoolSize: 10,
+    // Pages run several queries at once (the admin page runs five). Each new
+    // connection costs a TLS handshake and a login, about 2s to Atlas, so keep
+    // a few open instead of opening them on demand.
+    minPoolSize: 5,
     serverSelectionTimeoutMS: 10_000,
   });
   await client.connect();
   const db = client.db(DB_NAME);
 
+  // Housekeeping runs in the background so the first request doesn't wait on it.
+  void housekeeping(db);
+  return db;
+}
+
+/** Idempotent: indexes, then the one-time field backfill. */
+async function housekeeping(db: Db) {
   await db
     .collection(DOCUMENTS_COLLECTION_NAME)
     .createIndexes([
@@ -79,8 +90,6 @@ async function connect(): Promise<Db> {
   await backfillDerivedFields(db).catch((err) =>
     console.error("[mongo] backfill failed:", err),
   );
-
-  return db;
 }
 
 export function connectToMongo(): Promise<Db> {

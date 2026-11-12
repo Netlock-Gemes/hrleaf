@@ -15,6 +15,7 @@ All notable changes to HRLeaf are documented here.
 
 - The note's `⋯` menu has an Admin section: Share settings, Lock / Unlock note, and Move to trash (with a confirmation). Lock and trash are also in the command palette
 - Share settings respond instantly: changes show at once and save in the background in click order, and a failed save puts the setting back. Each click is now one database write instead of re-rendering the whole admin page twice (list, counts, stats, storage) and waiting for the activity log; the admin table refreshes once when the dialog closes
+- Admin page loads faster: the database pool keeps 5 connections open, so the page's five queries run at once instead of opening new Atlas connections (about 2s each); storage use is kept for 10 minutes instead of asked for on every load; index setup no longer holds up the first request after a cold start
 - Admin actions write the activity log after responding
 
 ### Fixed
