@@ -199,6 +199,14 @@ body {
   outline-offset: 2px;
 }
 
+/* Inside a note, clicking a checklist line, table, divider or other block never draws a box. */
+.editor-input :focus,
+.editor-input :focus-visible,
+.editor-static :focus,
+.editor-static :focus-visible {
+  outline: none;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
 }
@@ -421,6 +429,8 @@ body {
   .editor-listitem-checked::before,
   .editor-listitem-unchecked::before {
     @apply content-[''] absolute w-4 h-4 top-0.5 left-0 cursor-pointer block bg-cover;
+    /* Centre the 16px box on the first text line. */
+    top: calc((1lh - 16px) / 2);
   }
 
   .editor-listitem-unchecked::before {
@@ -434,6 +444,7 @@ body {
   /* Checkmark */
   .editor-listitem-checked::after {
     @apply content-[''] cursor-pointer border-checkbox-checkmark border-solid absolute block top-1.5 w-[3px] left-[7px] right-[7px] h-1.5 rotate-45 border-0 border-r-2 border-b-2;
+    top: calc((1lh - 16px) / 2 + 4px);
   }
 
   /* Hide original checkbox for nested items */
@@ -635,7 +646,7 @@ body {
 
   /* Selected states */
   .editor-table-selected {
-    @apply outline-2 outline outline-[--leaf];
+    @apply outline-none;
   }
 
   .editor-table-cell-selected {
@@ -867,7 +878,7 @@ body {
   }
 
   .editor-horizontal-rule-selected {
-    @apply outline outline-1 outline-[--leaf] select-none;
+    @apply select-none;
   }
 
   /* Basic equation container styles - node-level */
@@ -894,7 +905,7 @@ body {
   }
 
   .equation-selected {
-    @apply border border-surface-light bg-code-bg;
+    @apply bg-code-bg;
   }
 
   /* 3. Rendered Equation */
