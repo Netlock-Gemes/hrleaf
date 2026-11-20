@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { renderDocumentStatic } from "@/lib/static-render";
 import { getViewer, requireViewer } from "@/server/auth";
-import { canOpen, getEditorDocument } from "@/server/document-service";
+import { canOpen, defaultVisibility, getEditorDocument } from "@/server/document-service";
 import { RESERVED_SLUGS, normaliseSlug } from "@/server/document-utils";
 
 import EditorContainer from "../../components/editor/EditorContainer";
@@ -47,7 +47,7 @@ export default async function EditorPage({ params }: Props) {
       previousUpdatedAt={doc?.previous_updated_at ?? null}
       preview={renderDocumentStatic(doc?.content)}
       viewer={{ name: viewer.name, username: viewer.username, role: viewer.role }}
-      visibility={doc?.visibility ?? "team"}
+      visibility={doc?.visibility ?? defaultVisibility(viewer)}
       share={viewer.role === "admin" ? (doc?.share ?? null) : null}
     />
   );

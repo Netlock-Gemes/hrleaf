@@ -118,7 +118,12 @@ export type SaveOutcome =
 const hasCurrent = { $ne: [{ $ifNull: ["$content", null] }, null] };
 
 /** The pipeline update shared by every save path. */
-function savePipeline(content: object | null, by: string, now: string) {
+/** Who can see a brand-new note: the admin's own notes start as "Only me"; members' notes stay with the team (they couldn't open an admin-only note). */
+export function defaultVisibility(viewer: Pick<Viewer, "role">): Visibility {
+  return viewer.role === "admin" ? "private" : "team";
+}
+
+function savePipeline(content: object | null, by: string, now: string, newVisibility: Visibility = "team") {
   const derived = derivedFields(content);
   if (derived.size > MAX_CONTENT_BYTES) {
     throw new Error("Document is too large to save.");
@@ -138,7 +143,7 @@ function savePipeline(content: object | null, by: string, now: string) {
           updated_at: now,
           updated_by: { $literal: by },
           read_only: { $ifNull: ["$read_only", false] },
-          visibility: { $ifNull: ["$visibility", "team"] },
+          visibility: { $ifNull: ["$visibility", newVisibility] },
           version: { $ifNull: ["$version", 1] },
           created_at: { $ifNull: ["$created_at", now] },
           created_by: { $ifNull: ["$created_by", { $literal: by }] },
@@ -162,7 +167,7 @@ export async function saveDocumentContent(
   viewer: Viewer,
 ): Promise<SaveOutcome> {
   const now = new Date().toISOString();
-  const { stored, pipeline } = savePipeline(content, viewer.username, now);
+  const { stored, pipeline } = savePipeline(content, viewer.username, now, defaultVisibility(viewer));
   const col = await documents();
 
   const filter: Filter<Document> = { slug, read_only: { $ne: true }, deleted_at: { $exists: false } };
