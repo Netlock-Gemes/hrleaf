@@ -5,7 +5,6 @@ import { AdminFilter, AdminQuery, AdminSortKey } from "@/types";
 
 import ActivityPanel from "./ActivityPanel";
 import DocumentsTable from "./DocumentsTable";
-import MakeAllPrivateButton from "./MakeAllPrivateButton";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +43,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
             {query.q ? ` matching “${query.q}”` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <MakeAllPrivateButton />
-          <NewNoteButton label="New note" variant="primary" shortcut />
-        </div>
+        <NewNoteButton label="New note" variant="primary" shortcut />
       </div>
       {/* On phones the list comes first; the overview follows it. */}
       <div className="flex flex-col gap-6 lg:gap-8">

@@ -576,13 +576,6 @@ export async function setVisibilityMany(slugs: string[], visibility: Visibility)
   return res.matchedCount;
 }
 
-/** One-off: every note not in the trash becomes "Only me". */
-export async function makeAllPrivate() {
-  const col = await documents();
-  const res = await col.updateMany({ ...live, visibility: { $ne: "private" } }, { $set: { visibility: "private" } });
-  return res.modifiedCount;
-}
-
 export function newShareToken(): string {
   return randomBytes(9).toString("base64url"); // 12 characters, 72 bits
 }
