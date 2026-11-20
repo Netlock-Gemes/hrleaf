@@ -10,6 +10,7 @@ import { getViewer } from "./auth";
 import {
   deleteAllEmpty,
   emptyTrash,
+  makeAllPrivate,
   purgeMany,
   removeShareMany,
   renameDocument,
@@ -98,6 +99,15 @@ export async function setVisibilityAction(slugs: string[], visibility: Visibilit
     const what = visibility === "private" ? "Only you can see" : "Your team can see";
     return { ok: true, message: list.length === 1 ? `${what} ${list[0]}` : `${what} ${plural(list.length, "note")}` };
   }, opts);
+}
+
+/** One-off: make every note "Only me". */
+export async function makeAllPrivateAction() {
+  return guarded(async (admin) => {
+    const n = await makeAllPrivate();
+    logLater({ actor: admin.username, action: "made only-me", target: "all notes" });
+    return { ok: true, message: `Only you can see ${plural(n, "more note")}` };
+  });
 }
 
 export type ShareActionResult =
