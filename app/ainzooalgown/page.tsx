@@ -1,10 +1,11 @@
 import { NewNoteButton } from "@/app/components/NewNoteDialog";
 import { requireAdmin } from "@/server/auth";
 import { getAdminStats, getStorageInfo, listDocuments } from "@/server/document-service";
+import { listUsers } from "@/server/users-service";
 import { AdminFilter, AdminQuery, AdminSortKey } from "@/types";
 
-import ActivityPanel from "./ActivityPanel";
 import DocumentsTable from "./DocumentsTable";
+import OverviewPanels from "./OverviewPanels";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,14 @@ function parseQuery(sp: Record<string, string | string[] | undefined>): AdminQue
 }
 
 export default async function AdminPage({ searchParams }: { searchParams: SearchParams }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const query = parseQuery(await searchParams);
-  const [list, stats, storage] = await Promise.all([listDocuments(query), getAdminStats(), getStorageInfo()]);
+  const [list, stats, storage, users] = await Promise.all([
+    listDocuments(query),
+    getAdminStats(),
+    getStorageInfo(),
+    listUsers(),
+  ]);
 
   return (
     <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-3 pb-28 pt-6 sm:px-6 sm:pt-10">
@@ -48,7 +54,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
       {/* On phones the list comes first; the overview follows it. */}
       <div className="flex flex-col gap-6 lg:gap-8">
         <div className="order-2 lg:order-1">
-          <ActivityPanel stats={stats} storage={storage} />
+          <OverviewPanels
+            stats={stats}
+            storage={storage}
+            counts={list.counts}
+            adminUsername={admin.username}
+            members={Object.fromEntries(users.map((u) => [u.username, u.name || u.username]))}
+            now={Date.now()}
+          />
         </div>
         <div className="order-1 lg:order-2">
           <DocumentsTable list={list} query={query} now={Date.now()} />

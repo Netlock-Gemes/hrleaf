@@ -23,6 +23,12 @@
         "value": "geist mono",
         "createdAt": "2026-11-11T20:36:46.834Z",
         "reason": "Geist Mono is HRLeaf's incumbent code font"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-11-20T12:19:59.732Z",
+        "reason": "Claude: Arial,Helvetica in lib/rich-copy.ts is the email-safe font for HTML copied to the clipboard and pasted into Gmail/Outlook, not interface type"
       }
     ]
   }

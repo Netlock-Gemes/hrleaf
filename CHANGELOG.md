@@ -14,6 +14,7 @@ All notable changes to HRLeaf are documented here.
 
 - Clicking a checklist line, table, divider or equation no longer draws an outline; checkboxes sit centred on their text line
 - GitHub CI removed; Vercel builds every push
+- Admin overview: the notes-per-day chart is gone. Three panels of equal height instead: **Storage** (meter with HRLeaf / other / free, largest notes, backup), **Recently edited** (last five saves and who made them; members, public-link and Claude edits are told apart) and **Access** (Only me / Team / Public link split, notes anyone can open with read or edit mode, locked / empty / trash counts with the next permanent delete)
 
 - MCP endpoint (`/api/mcp`) so Claude Code can create, read, search and append to notes. Markdown is converted to real HRLeaf blocks (tables, callouts, toggles, equations, checklists); note names are made from the title. Off unless `MCP_TOKEN` is set
 - MCP writing is faster: find-and-replace edits (`hrleaf_edit_note`) that rewrite only the blocks they touch, adding to or replacing one section by its heading, reading just a note's outline or one section, "create or add to existing" in one call, search inside note text, list items that join the list next to them, and automatic re-apply when someone else saved at the same moment

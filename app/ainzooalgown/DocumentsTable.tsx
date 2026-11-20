@@ -57,6 +57,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatBytes } from "@/lib/format";
 import {
   AdminActionResult,
   ShareActionResult,
@@ -74,7 +75,6 @@ import {
 } from "@/server/admin-actions";
 import { AdminFilter, AdminListResult, AdminQuery, AdminSortKey, DocumentSummary, ShareMode } from "@/types";
 
-import { formatBytes } from "./ActivityPanel";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",

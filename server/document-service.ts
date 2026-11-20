@@ -28,7 +28,7 @@ import {
   extractPreview,
   generateRandomSlug,
 } from "./document-utils";
-import { connectToMongo, documents } from "./mongo-config";
+import { TRASH_DAYS, connectToMongo, documents } from "./mongo-config";
 
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024; // 2 MB of editor JSON
 export const ADMIN_PAGE_SIZE = 50;
@@ -484,28 +484,16 @@ export async function listSlugsFor(viewer: Viewer, limit = 2000) {
 
 export async function getAdminStats(): Promise<AdminStats> {
   const col = await documents();
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const start = new Date(today.getTime() - 29 * 86_400_000);
-  const startIso = start.toISOString();
-
   const [facet] = await col
     .aggregate<{
-      created: { _id: string; n: number }[];
-      edited: { _id: string; n: number }[];
       total: { size: number }[];
       largest: { slug: string; size: number }[];
+      recent: { slug: string; updated_at: string; updated_by?: string; visibility?: string }[];
+      shared: { slug: string; mode?: string; created_at?: string }[];
+      oldestTrash: { deleted_at: Date }[];
     }>([
       {
         $facet: {
-          created: [
-            { $match: { created_at: { $gte: startIso } } },
-            { $group: { _id: { $substrBytes: ["$created_at", 0, 10] }, n: { $sum: 1 } } },
-          ],
-          edited: [
-            { $match: { updated_at: { $gte: startIso } } },
-            { $group: { _id: { $substrBytes: ["$updated_at", 0, 10] }, n: { $sum: 1 } } },
-          ],
           total: [{ $group: { _id: null, size: { $sum: { $ifNull: ["$size", 0] } } } }],
           largest: [
             { $match: live },
@@ -513,19 +501,46 @@ export async function getAdminStats(): Promise<AdminStats> {
             { $limit: 5 },
             { $project: { _id: 0, slug: 1, size: { $ifNull: ["$size", 0] } } },
           ],
+          recent: [
+            { $match: { ...live, updated_at: { $exists: true } } },
+            { $sort: { updated_at: -1 } },
+            { $limit: 5 },
+            { $project: { _id: 0, slug: 1, updated_at: 1, updated_by: 1, visibility: 1 } },
+          ],
+          shared: [
+            { $match: { ...live, "share.token": { $exists: true } } },
+            { $sort: { "share.created_at": -1 } },
+            { $limit: 5 },
+            { $project: { _id: 0, slug: 1, mode: "$share.mode", created_at: "$share.created_at" } },
+          ],
+          oldestTrash: [
+            { $match: { deleted_at: { $exists: true } } },
+            { $sort: { deleted_at: 1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, deleted_at: 1 } },
+          ],
         },
       },
     ])
     .toArray();
 
-  const created = new Map(facet.created.map((d) => [d._id, d.n]));
-  const edited = new Map(facet.edited.map((d) => [d._id, d.n]));
-  const days = Array.from({ length: 30 }, (_, i) => {
-    const date = new Date(start.getTime() + i * 86_400_000).toISOString().slice(0, 10);
-    return { date, created: created.get(date) ?? 0, edited: edited.get(date) ?? 0 };
-  });
-
-  return { days, largest: facet.largest, totalSize: facet.total[0]?.size ?? 0 };
+  const oldest = facet.oldestTrash[0]?.deleted_at;
+  return {
+    largest: facet.largest,
+    totalSize: facet.total[0]?.size ?? 0,
+    recent: facet.recent.map((r) => ({
+      slug: r.slug,
+      updated_at: r.updated_at,
+      updated_by: r.updated_by ?? null,
+      visibility: r.visibility === "private" ? "private" : "team",
+    })),
+    shared: facet.shared.map((r) => ({
+      slug: r.slug,
+      mode: r.mode === "write" ? "write" : "read",
+      created_at: r.created_at ?? null,
+    })),
+    nextPurgeAt: oldest ? new Date(new Date(oldest).getTime() + TRASH_DAYS * 86_400_000).toISOString() : null,
+  };
 }
 
 const ATLAS_FREE_LIMIT = 512 * 1024 * 1024;

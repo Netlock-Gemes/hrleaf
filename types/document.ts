@@ -90,10 +90,14 @@ export interface AdminListResult {
 }
 
 export interface AdminStats {
-  /** Last 30 days, oldest first. */
-  days: { date: string; created: number; edited: number }[];
   largest: { slug: string; size: number }[];
   totalSize: number;
+  /** Most recently saved notes, newest first. */
+  recent: { slug: string; updated_at: string; updated_by: string | null; visibility: Visibility }[];
+  /** Notes with a public share link, newest link first. */
+  shared: { slug: string; mode: ShareMode; created_at: string | null }[];
+  /** When the oldest note in the trash is removed for good, or null if the trash is empty. */
+  nextPurgeAt: string | null;
 }
 
 export interface StorageInfo {
