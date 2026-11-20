@@ -198,7 +198,7 @@ npm run test:e2e    # browser tests (Playwright): roles, sharing, drafts, trash,
 
 The end-to-end tests create notes and users named `zz-e2e-…` and delete them afterwards. They refuse to run unless `MONGODB_DB` ends in `_dev`, `_ci` or `_test`, so they can't touch real notes. Set `PLAYWRIGHT_CHROMIUM_PATH` to use an installed Chromium.
 
-**CI** (`.github/workflows/ci.yml`) runs on every push to `develop` and `main` and on pull requests: lint, type check, unit tests and build, then the browser tests against a throwaway MongoDB inside the runner.
+There is no GitHub CI: Vercel builds and deploys every push. Run the checks above locally before pushing.
 
 **Errors in production** are logged on one line starting with `[hrleaf:error]` (route, path, message, digest; never cookies or note text). Find them in Vercel → Logs.
 

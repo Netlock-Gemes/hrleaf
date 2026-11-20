@@ -82,6 +82,8 @@ export class EquationNode extends DecoratorNode<ReactElement> {
     element.className = this.__inline 
       ? 'editor-equation editor-equation-inline' 
       : 'editor-equation editor-equation-block';
+    // The TeX source, for copying with formatting (lib/rich-copy).
+    element.dataset.equation = this.__equation;
     return element;
   }
 
@@ -131,7 +133,8 @@ export class EquationNode extends DecoratorNode<ReactElement> {
     };
   }
 
-  updateDOM(prevNode: this): boolean {
+  updateDOM(prevNode: this, dom: HTMLElement): boolean {
+    if (prevNode.__equation !== this.__equation) dom.dataset.equation = this.__equation;
     // If the inline property changes, replace the element
     return this.__inline !== prevNode.__inline;
   }

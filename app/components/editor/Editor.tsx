@@ -26,6 +26,7 @@ import { MutableRefObject, ReactElement, ReactNode, useEffect, useState } from '
 
 import {
   CalloutNode,
+  CopyBlockNode,
   EquationNode,
   InlineTableInputNode,
   ToggleContainerNode,
@@ -110,6 +111,7 @@ export default function Editor({
       HorizontalRuleNode,
       EquationNode,
       CalloutNode,
+      CopyBlockNode,
       ToggleContainerNode,
       ToggleTitleNode,
       ToggleContentNode,

@@ -28,13 +28,16 @@ import { CalloutVariant, nextCalloutVariant } from '@/lib/blocks';
 
 import {
   $createCalloutWithParagraph,
+  $createCopyBlockWithParagraph,
   $createToggle,
   $createToggleContentNode,
   $isCalloutNode,
+  $isCopyBlockNode,
   $isToggleContainerNode,
   $isToggleContentNode,
   $isToggleTitleNode,
   CalloutNode,
+  CopyBlockNode,
   ToggleContainerNode,
   ToggleContentNode,
   ToggleTitleNode,
@@ -42,8 +45,10 @@ import {
 
 export const INSERT_CALLOUT_COMMAND: LexicalCommand<CalloutVariant> = createCommand('INSERT_CALLOUT_COMMAND');
 export const INSERT_TOGGLE_COMMAND: LexicalCommand<void> = createCommand('INSERT_TOGGLE_COMMAND');
+export const INSERT_COPY_BLOCK_COMMAND: LexicalCommand<void> = createCommand('INSERT_COPY_BLOCK_COMMAND');
 
-const isBlockContainer = (n: LexicalNode | null): n is ElementNode => $isCalloutNode(n) || $isToggleContainerNode(n);
+const isBlockContainer = (n: LexicalNode | null): n is ElementNode =>
+  $isCalloutNode(n) || $isCopyBlockNode(n) || $isToggleContainerNode(n);
 
 /** The block the cursor is in, at the level of its nearest root (page, callout or toggle section). */
 function $currentBlock(): ElementNode | null {
@@ -94,7 +99,7 @@ export function BlocksPlugin(): null {
     const onMouseDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       // Keep the caret where it is when clicking a block's icon.
-      if (target?.closest('.editor-callout-icon, .editor-toggle-chevron')) event.preventDefault();
+      if (target?.closest('.editor-callout-icon, .editor-toggle-chevron, .editor-copyblock-bar')) event.preventDefault();
     };
 
     const onClick = (event: MouseEvent) => {
@@ -161,6 +166,17 @@ export function BlocksPlugin(): null {
       ),
 
       editor.registerCommand(
+        INSERT_COPY_BLOCK_COMMAND,
+        () => {
+          const block = $createCopyBlockWithParagraph();
+          $placeBlock(block);
+          block.getFirstChild()?.selectStart();
+          return true;
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+
+      editor.registerCommand(
         INSERT_TOGGLE_COMMAND,
         () => {
           const { container, title } = $createToggle();
@@ -171,7 +187,7 @@ export function BlocksPlugin(): null {
         COMMAND_PRIORITY_EDITOR,
       ),
 
-      // Enter on an empty last line inside a callout or toggle steps out below it.
+      // Enter on an empty last line inside a callout, copy block or toggle steps out below it.
       editor.registerCommand(
         INSERT_PARAGRAPH_COMMAND,
         () => {
@@ -180,7 +196,12 @@ export function BlocksPlugin(): null {
           const block = $currentBlock();
           if (!$isParagraphNode(block) || block.getTextContentSize() !== 0 || block.getNextSibling()) return false;
           const parent = block.getParent();
-          const outer = $isCalloutNode(parent) ? parent : $isToggleContentNode(parent) ? parent.getParent() : null;
+          const outer =
+            $isCalloutNode(parent) || $isCopyBlockNode(parent)
+              ? parent
+              : $isToggleContentNode(parent)
+                ? parent.getParent()
+                : null;
           if (!outer || !parent || parent.getChildrenSize() < 2) return false;
           outer.insertAfter(block);
           block.selectStart();
@@ -236,6 +257,9 @@ export function BlocksPlugin(): null {
 
       // Keep each block's shape valid after pastes, deletes and undo.
       editor.registerNodeTransform(CalloutNode, (node) => {
+        if (node.getChildrenSize() === 0) node.append($createParagraphNode());
+      }),
+      editor.registerNodeTransform(CopyBlockNode, (node) => {
         if (node.getChildrenSize() === 0) node.append($createParagraphNode());
       }),
       editor.registerNodeTransform(ToggleContainerNode, (node) => {

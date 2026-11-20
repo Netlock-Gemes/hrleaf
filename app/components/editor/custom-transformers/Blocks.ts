@@ -5,10 +5,12 @@ import { CALLOUT_LABELS } from '@/lib/blocks';
 
 import {
   $isCalloutNode,
+  $isCopyBlockNode,
   $isToggleContainerNode,
   $isToggleContentNode,
   $isToggleTitleNode,
   CalloutNode,
+  CopyBlockNode,
   ToggleContainerNode,
   ToggleContentNode,
   ToggleTitleNode,
@@ -28,6 +30,19 @@ export const CALLOUT: ElementTransformer = {
     const label = CALLOUT_LABELS[node.getVariant()].toUpperCase();
     const lines = blockLines(node, traverse).join('\n>\n').split('\n').map((l) => (l === '>' ? l : `> ${l}`));
     return [`> [!${label}]`, ...lines].join('\n');
+  },
+  regExp: NEVER,
+  replace: () => false,
+  type: 'element',
+};
+
+/** Same shape as a callout, marked `> [!COPY]`. */
+export const COPY_BLOCK: ElementTransformer = {
+  dependencies: [CopyBlockNode],
+  export: (node: LexicalNode, traverse) => {
+    if (!$isCopyBlockNode(node)) return null;
+    const lines = blockLines(node, traverse).join('\n>\n').split('\n').map((l) => (l === '>' ? l : `> ${l}`));
+    return ['> [!COPY]', ...lines].join('\n');
   },
   regExp: NEVER,
   replace: () => false,

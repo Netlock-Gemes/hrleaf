@@ -24,3 +24,7 @@ export {
   ToggleContentNode,
   ToggleTitleNode,
 } from './ToggleNodes';
+
+export {
+  $createCopyBlockNode, $createCopyBlockWithParagraph, $isCopyBlockNode, CopyBlockNode,
+} from './CopyBlockNode';

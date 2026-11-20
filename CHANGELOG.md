@@ -6,6 +6,15 @@ All notable changes to HRLeaf are documented here.
 
 ### Added
 
+- Copy block (`/copy` or the block rail): a box for an email, message or template with a Copy button that copies everything inside with its formatting (bold, lists, checklists, tables, links), plus plain text for apps that only take text. Works in the editor, read-only views and share links. In Markdown it's `> [!COPY]`
+- "Copy note" in the `⋯` menu and the command palette copies the whole note with formatting
+- New notes you create start as "Only me"; notes members create still start as "Team"
+
+### Changed
+
+- Clicking a checklist line, table, divider or equation no longer draws an outline; checkboxes sit centred on their text line
+- GitHub CI removed; Vercel builds every push
+
 - MCP endpoint (`/api/mcp`) so Claude Code can create, read, search and append to notes. Markdown is converted to real HRLeaf blocks (tables, callouts, toggles, equations, checklists); note names are made from the title. Off unless `MCP_TOKEN` is set
 - MCP writing is faster: find-and-replace edits (`hrleaf_edit_note`) that rewrite only the blocks they touch, adding to or replacing one section by its heading, reading just a note's outline or one section, "create or add to existing" in one call, search inside note text, list items that join the list next to them, and automatic re-apply when someone else saved at the same moment
 - MCP tools no longer set visibility; they only write and read

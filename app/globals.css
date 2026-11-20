@@ -1328,6 +1328,62 @@ body {
     @apply mb-0;
   }
 
+  /* ── Copy block: a ruled box with a Copy button on top ───────────── */
+  .editor-copyblock {
+    @apply my-4 overflow-hidden;
+    border-radius: 3px;
+    border: 1px solid var(--pad-rule);
+  }
+
+  .editor-copyblock-bar {
+    @apply flex select-none items-center justify-between gap-2 py-1 pl-3 pr-1;
+    border-bottom: 1px solid var(--pad-hair);
+    background: var(--pad-wash);
+  }
+
+  .editor-copyblock-label {
+    @apply text-[0.68rem] font-medium uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pad-label);
+  }
+
+  .editor-copyblock-copy {
+    @apply inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-2 text-[13px] font-medium;
+    color: var(--text-secondary);
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  .editor-copyblock-copy:hover {
+    background: rgba(var(--leaf-rgb), 0.12);
+    color: var(--text);
+  }
+
+  .editor-copyblock-copy:active {
+    transform: scale(0.97);
+  }
+
+  .editor-copyblock-copy[data-copied] {
+    color: var(--leaf-strong);
+  }
+
+  .editor-copyblock-body {
+    @apply px-4 py-3;
+  }
+
+  .editor-copyblock-body > :first-child {
+    @apply mt-0;
+  }
+
+  .editor-copyblock-body > :last-child {
+    @apply mb-0;
+  }
+
+  @media print {
+    .editor-copyblock-bar {
+      display: none;
+    }
+  }
+
   /* ── Toggle ───────────────────────────────────────── */
   .editor-toggle {
     @apply my-2;

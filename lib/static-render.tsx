@@ -4,7 +4,7 @@ import katex from "katex";
 import { Fragment, ReactNode } from "react";
 
 import theme from "@/app/components/editor/themes/DefaultTheme";
-import { CALLOUT_ICONS, CALLOUT_LABELS, CHEVRON_ICON, isCalloutVariant } from "@/lib/blocks";
+import { CALLOUT_ICONS, CALLOUT_LABELS, CHEVRON_ICON, COPY_BLOCK_BAR_HTML, isCalloutVariant } from "@/lib/blocks";
 
 /**
  * Renders saved Lexical JSON to plain React/HTML on the server, using the same
@@ -78,7 +78,7 @@ function renderEquation(node: Node, key: number, opts: Options): ReactNode {
   const cls = `${theme.equation.container} ${inline ? theme.equation.inline : theme.equation.block}`;
   if (opts.equations === "plain") {
     return (
-      <span key={key} className={cls}>
+      <span key={key} className={cls} data-equation={node.equation}>
         <code className={theme.text.code}>{node.equation}</code>
       </span>
     );
@@ -91,7 +91,7 @@ function renderEquation(node: Node, key: number, opts: Options): ReactNode {
     strict: "ignore",
   });
   return (
-    <span key={key} className={cls}>
+    <span key={key} className={cls} data-equation={node.equation}>
       <span className={theme.equation.renderer} dangerouslySetInnerHTML={{ __html: html }} />
     </span>
   );
@@ -224,6 +224,13 @@ function renderNode(node: Node, key: number, opts: Options, depth: number): Reac
         </aside>
       );
     }
+    case "copyblock":
+      return (
+        <div key={key} className="editor-copyblock">
+          <div className="editor-copyblock-bar" dangerouslySetInnerHTML={{ __html: COPY_BLOCK_BAR_HTML }} />
+          <div className="editor-copyblock-body">{renderChildren(node.children, opts, depth)}</div>
+        </div>
+      );
     case "toggle": {
       const [title, ...rest] = node.children ?? [];
       return (

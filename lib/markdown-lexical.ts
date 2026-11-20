@@ -236,11 +236,13 @@ function blocks(tokens: Token[]): J[] {
 function quoteOrCallout(q: Tokens.Blockquote): J {
   const first = q.tokens[0];
   const m = first?.type === "paragraph" ? /^\[!(\w+)\][^\S\n]*(?:\n|$)/.exec(first.raw) : null;
-  const variant = m ? ALERTS[m[1].toUpperCase()] : undefined;
-  if (variant) {
+  const kind = m?.[1].toUpperCase();
+  const variant = kind ? ALERTS[kind] : undefined;
+  if (variant || kind === "COPY") {
     const rest = first.raw.slice(m![0].length);
     const body = [...(rest.trim() ? lex(rest) : []), ...q.tokens.slice(1)];
     const kids = blocks(body);
+    if (kind === "COPY") return element("copyblock", kids.length ? kids : [paragraph([])]);
     return element("callout", kids.length ? kids : [paragraph([])], { variant });
   }
   // A Lexical quote holds inline content only: join its paragraphs with line breaks.
@@ -469,6 +471,10 @@ function blockMd(node: N): string {
       const label = (CALLOUT_LABELS as Record<string, string>)[node.variant ?? "note"] ?? "Note";
       const body = docMd(node.children);
       return [`> [!${label.toUpperCase()}]`, ...body.split("\n").map((l) => (l ? `> ${l}` : ">"))].join("\n");
+    }
+    case "copyblock": {
+      const body = docMd(node.children);
+      return ["> [!COPY]", ...body.split("\n").map((l) => (l ? `> ${l}` : ">"))].join("\n");
     }
     case "toggle": {
       const title = node.children?.find((c) => c.type === "toggle-title");

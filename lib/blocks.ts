@@ -1,4 +1,4 @@
-/** Shared bits for callout and toggle blocks, used by the editor and the read-only renderer. */
+/** Shared bits for callout, toggle and copy blocks, used by the editor and the read-only renderer. */
 
 export const CALLOUT_VARIANTS = ["note", "tip", "warning", "danger"] as const;
 export type CalloutVariant = (typeof CALLOUT_VARIANTS)[number];
@@ -34,3 +34,13 @@ export const CALLOUT_ICONS: Record<CalloutVariant, string> = {
 };
 
 export const CHEVRON_ICON = svg('<path d="m9 18 6-6-6-6"/>');
+
+const COPY_ICON = svg('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>').replace(
+  'width="18" height="18"',
+  'width="14" height="14"',
+);
+
+/** The bar on top of a copy block: a label and the Copy button. Static, trusted markup. */
+export const COPY_BLOCK_BAR_HTML =
+  `<span class="editor-copyblock-label">Copy block</span>` +
+  `<button type="button" class="editor-copyblock-copy" tabindex="0" aria-label="Copy this block with its formatting">${COPY_ICON}<span class="editor-copyblock-copy-text">Copy</span></button>`;

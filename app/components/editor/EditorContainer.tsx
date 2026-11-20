@@ -17,6 +17,7 @@ import {
 import {
   Check,
   ChevronDown,
+  ClipboardCopy,
   Clock,
   CloudOff,
   Download,
@@ -77,6 +78,7 @@ import {
   writeDraft,
   writePref,
 } from "@/lib/recent";
+import { copyRich } from "@/lib/rich-copy";
 import { deleteDocumentsAction, setLockedAction } from "@/server/admin-actions";
 import { restorePrevious, saveDocument, saveSharedDocument } from "@/server/document-actions";
 import { ShareLink, Visibility } from "@/types";
@@ -585,6 +587,17 @@ export default function EditorContainer({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  /** The whole note, formatted, ready to paste into an email or document. */
+  const copyNote = async () => {
+    const root = editorRef.current?.getRootElement();
+    if (!root || !root.textContent?.trim()) {
+      toast("Nothing to copy yet.", { duration: 1500 });
+      return;
+    }
+    if (await copyRich(root)) toast.success("Note copied with formatting", { duration: 1800 });
+    else toast.error("Couldn't copy. Select the text and copy it instead.");
+  };
+
   const exportPdf = () => {
     toast("In the print dialog, choose “Save as PDF”.", { duration: 3500 });
     setTimeout(() => window.print(), 300);
@@ -595,8 +608,8 @@ export default function EditorContainer({
   const modKey = isMac ? "⌘" : "Ctrl+";
 
   // Editor actions and headings in the command palette while this note is open.
-  const commandsRef = useRef({ downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty, toggleLock });
-  commandsRef.current = { downloadMarkdown, exportPdf, toggleFocus, focusMode, save, computeDirty, toggleLock };
+  const commandsRef = useRef({ downloadMarkdown, copyNote, exportPdf, toggleFocus, focusMode, save, computeDirty, toggleLock });
+  commandsRef.current = { downloadMarkdown, copyNote, exportPdf, toggleFocus, focusMode, save, computeDirty, toggleLock };
   useEffect(() => {
     const c = () => commandsRef.current;
     const icon = (I: typeof Download) => <I className="h-4 w-4" aria-hidden />;
@@ -613,6 +626,7 @@ export default function EditorContainer({
               run: () => (c().computeDirty() ? void c().save() : toast("Nothing new to save.", { duration: 1500 })),
             },
           ]),
+      { id: "copy-note", group: "This note", label: "Copy note with formatting", keywords: "clipboard email paste rich text", icon: icon(ClipboardCopy), run: () => void c().copyNote() },
       { id: "md", group: "This note", label: "Download Markdown", keywords: "export md", icon: icon(Download), run: () => c().downloadMarkdown() },
       { id: "pdf", group: "This note", label: "Export PDF", keywords: "print", icon: icon(Printer), run: () => c().exportPdf() },
       {
@@ -869,6 +883,13 @@ export default function EditorContainer({
                 </>
               )}
               <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2" onSelect={() => void copyNote()}>
+                <ClipboardCopy className="h-4 w-4" aria-hidden />
+                <div className="flex flex-col">
+                  <span>Copy note</span>
+                  <span className="text-[12px] text-muted-foreground">With formatting, for email or docs</span>
+                </div>
+              </DropdownMenuItem>
               <DropdownMenuItem className="gap-2" onSelect={downloadMarkdown}>
                 <Download className="h-4 w-4" aria-hidden /> Download Markdown
               </DropdownMenuItem>

@@ -43,6 +43,7 @@ import {
   IndentDecrease,
   IndentIncrease,
   Info,
+  ClipboardCopy,
   Lightbulb,
   List,
   ListChecks,
@@ -66,7 +67,7 @@ import { CalloutVariant } from '@/lib/blocks';
 
 import { $createInlineTableInputNode } from '../custom-nodes';
 
-import { INSERT_CALLOUT_COMMAND, INSERT_TOGGLE_COMMAND } from './BlocksPlugin';
+import { INSERT_CALLOUT_COMMAND, INSERT_COPY_BLOCK_COMMAND, INSERT_TOGGLE_COMMAND } from './BlocksPlugin';
 import { INSERT_EQUATION_COMMAND } from './EquationPlugin';
 
 type Group = 'Basic' | 'Lists' | 'Insert' | 'Code' | 'Math' | 'Format';
@@ -290,6 +291,12 @@ function getBaseOptions(editor: LexicalEditor): ComponentPickerOption[] {
           onSelect: () => editor.dispatchCommand(INSERT_CALLOUT_COMMAND, variant),
         }),
     ),
+    new ComponentPickerOption('Copy block', {
+      group: 'Basic',
+      icon: ClipboardCopy,
+      keywords: ['copy', 'clipboard', 'email', 'mail', 'message', 'template', 'snippet', 'reply'],
+      onSelect: () => editor.dispatchCommand(INSERT_COPY_BLOCK_COMMAND, undefined),
+    }),
     new ComponentPickerOption('Toggle', {
       group: 'Basic',
       icon: ListCollapse,

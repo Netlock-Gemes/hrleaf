@@ -29,6 +29,7 @@ import {
   Heading2,
   Heading3,
   Heading4,
+  ClipboardCopy,
   Info,
   List,
   ListChecks,
@@ -46,10 +47,11 @@ import { useEffect, useState } from 'react';
 import {
   $createInlineTableInputNode,
   $isCalloutNode,
+  $isCopyBlockNode,
   $isToggleContainerNode,
 } from '../custom-nodes';
 
-import { INSERT_CALLOUT_COMMAND, INSERT_TOGGLE_COMMAND } from './BlocksPlugin';
+import { INSERT_CALLOUT_COMMAND, INSERT_COPY_BLOCK_COMMAND, INSERT_TOGGLE_COMMAND } from './BlocksPlugin';
 import { insertCode, insertText, setBlock } from './ComponentPickerPlugin';
 import { INSERT_EQUATION_COMMAND } from './EquationPlugin';
 
@@ -67,7 +69,7 @@ type Item = {
   run: (editor: LexicalEditor, s: RailState) => void;
 };
 
-type RailState = { block: BlockType; inCallout: boolean; inToggle: boolean };
+type RailState = { block: BlockType; inCallout: boolean; inToggle: boolean; inCopy: boolean };
 
 const paragraph = (editor: LexicalEditor) => setBlock(editor, () => $createParagraphNode());
 
@@ -109,6 +111,7 @@ const GROUPS: { name: string; items: Item[] }[] = [
     name: 'Blocks',
     items: [
       { id: 'callout', label: 'Callout', Icon: Info, isActive: (s) => s.inCallout, run: (e) => e.dispatchCommand(INSERT_CALLOUT_COMMAND, 'note') },
+      { id: 'copyblock', label: 'Copy block', Icon: ClipboardCopy, isActive: (s) => s.inCopy, run: (e) => e.dispatchCommand(INSERT_COPY_BLOCK_COMMAND, undefined) },
       { id: 'toggle', label: 'Toggle', Icon: ListCollapse, isActive: (s) => s.inToggle, run: (e) => e.dispatchCommand(INSERT_TOGGLE_COMMAND, undefined) },
       {
         id: 'code',
@@ -148,18 +151,19 @@ const GROUPS: { name: string; items: Item[] }[] = [
 ];
 
 function $readState(): RailState {
-  const none: RailState = { block: 'other', inCallout: false, inToggle: false };
+  const none: RailState = { block: 'other', inCallout: false, inToggle: false, inCopy: false };
   const selection = $getSelection();
   if (!$isRangeSelection(selection)) return none;
   const node = selection.anchor.getNode();
 
   const inCallout = !!$findMatchingParent(node, $isCalloutNode);
   const inToggle = !!$findMatchingParent(node, $isToggleContainerNode);
+  const inCopy = !!$findMatchingParent(node, $isCopyBlockNode);
 
   const listNode = $getNearestNodeOfType(node, ListNode);
   if ($isListNode(listNode)) {
     const t = listNode.getListType();
-    return { block: t === 'bullet' ? 'bullet' : t === 'number' ? 'number' : 'check', inCallout, inToggle };
+    return { block: t === 'bullet' ? 'bullet' : t === 'number' ? 'number' : 'check', inCallout, inToggle, inCopy };
   }
 
   const block = $findMatchingParent(
@@ -173,7 +177,7 @@ function $readState(): RailState {
   } else if ($isQuoteNode(block)) type = 'quote';
   else if ($isCodeNode(block)) type = 'code';
   else if (block && block.getType() === 'paragraph') type = 'paragraph';
-  return { block: type, inCallout, inToggle };
+  return { block: type, inCallout, inToggle, inCopy };
 }
 
 const BLOCK_NAMES: Record<BlockType, string> = {
@@ -192,7 +196,7 @@ const BLOCK_NAMES: Record<BlockType, string> = {
 
 /** What the status line says when nothing is hovered: where the cursor is. */
 function currentLabel(s: RailState): string {
-  const where = s.inCallout ? ' in callout' : s.inToggle ? ' in toggle' : '';
+  const where = s.inCallout ? ' in callout' : s.inCopy ? ' in copy block' : s.inToggle ? ' in toggle' : '';
   return `${BLOCK_NAMES[s.block]}${s.block === 'other' ? '' : where}`;
 }
 
@@ -203,7 +207,7 @@ function currentLabel(s: RailState): string {
 export function BlockRailPlugin({ hidden = false }: { hidden?: boolean }) {
   const [editor] = useLexicalComposerContext();
   const editable = useLexicalEditable();
-  const [state, setState] = useState<RailState>({ block: 'paragraph', inCallout: false, inToggle: false });
+  const [state, setState] = useState<RailState>({ block: 'paragraph', inCallout: false, inToggle: false, inCopy: false });
   const [hovered, setHovered] = useState<Item | null>(null);
 
   useEffect(
@@ -211,7 +215,12 @@ export function BlockRailPlugin({ hidden = false }: { hidden?: boolean }) {
       editor.registerUpdateListener(({ editorState }) => {
         const next = editorState.read($readState);
         setState((prev) =>
-          prev.block === next.block && prev.inCallout === next.inCallout && prev.inToggle === next.inToggle ? prev : next,
+          prev.block === next.block &&
+          prev.inCallout === next.inCallout &&
+          prev.inToggle === next.inToggle &&
+          prev.inCopy === next.inCopy
+            ? prev
+            : next,
         );
       }),
     [editor],

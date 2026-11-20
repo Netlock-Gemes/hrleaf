@@ -46,7 +46,7 @@ const MAX_MARKDOWN = 500_000;
 const MAX_EDITS = 50;
 
 const INSTRUCTIONS = `HRLeaf is a private notebook. Each note has a name (its "slug", e.g. "weekly-plan") and lives at <site>/<slug>.
-Write in Markdown: headings, **bold**, *italic*, ~~strike~~, \`code\`, links, lists, - [ ] checklists, > quotes, \`\`\`lang code blocks, ---, GFM tables, $inline$ and $$block$$ LaTeX, > [!NOTE] / [!TIP] / [!WARNING] / [!IMPORTANT] callouts, and <details><summary>Title</summary> ... </details> toggles. Link another note with [text](/its-slug).
+Write in Markdown: headings, **bold**, *italic*, ~~strike~~, \`code\`, links, lists, - [ ] checklists, > quotes, \`\`\`lang code blocks, ---, GFM tables, $inline$ and $$block$$ LaTeX, > [!NOTE] / [!TIP] / [!WARNING] / [!IMPORTANT] callouts, > [!COPY] copy blocks (a box with a Copy button, for emails and messages to copy as-is), and <details><summary>Title</summary> ... </details> toggles. Link another note with [text](/its-slug).
 Work fast and small:
 - To put text in a note that may already exist, call hrleaf_create_note with if_exists "append" (one call, no search needed).
 - To add under a heading, use hrleaf_update_note with "section".

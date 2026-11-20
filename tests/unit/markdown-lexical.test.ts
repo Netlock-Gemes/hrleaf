@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CalloutNode,
+  CopyBlockNode,
   EquationNode,
   ToggleContainerNode,
   ToggleContentNode,
@@ -26,7 +27,7 @@ function editor() {
     nodes: [
       HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, CodeHighlightNode,
       TableNode, TableCellNode, TableRowNode, AutoLinkNode, LinkNode, HorizontalRuleNode,
-      EquationNode, CalloutNode, ToggleContainerNode, ToggleTitleNode, ToggleContentNode,
+      EquationNode, CalloutNode, CopyBlockNode, ToggleContainerNode, ToggleTitleNode, ToggleContentNode,
     ],
     onError: (e) => {
       throw e;
@@ -135,6 +136,16 @@ describe("markdownToLexical", () => {
     expect(variant("NOTE")).toBe("note");
     expect(variant("WARNING")).toBe("warning");
     expect(variant("IMPORTANT")).toBe("danger");
+  });
+
+  it("reads > [!COPY] as a copy block and writes it back the same way", () => {
+    const md = "> [!COPY]\n> Hi Priya,\n>\n> **Thanks** for the call.";
+    const json = markdownToLexical(md);
+    const block = json.root.children![0] as { type: string; children: { type: string }[] };
+    expect(block.type).toBe("copyblock");
+    expect(block.children.map((c) => c.type)).toEqual(["paragraph", "paragraph"]);
+    expect(lexicalToMarkdown(json)).toBe(md);
+    expect(throughEditor(json).markdown).toBe(md);
   });
 
   it("does not read prices as equations", () => {

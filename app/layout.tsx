@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 
+import CopyBlockListener from "@/app/components/CopyBlockListener";
 import ServiceWorker from "@/app/components/ServiceWorker";
 import TableOverflowHints from "@/app/components/TableOverflowHints";
 import { Toaster } from "@/components/ui/sonner";
@@ -80,6 +81,7 @@ export default function RootLayout({
         {children}
         <Toaster position="bottom-center" />
         <TableOverflowHints />
+        <CopyBlockListener />
         <ServiceWorker />
       </body>
     </html>
